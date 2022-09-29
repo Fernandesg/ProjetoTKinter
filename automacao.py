@@ -1,5 +1,10 @@
+from faulthandler import disable
+from fileinput import filename
+from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
 from tkinter import *
+
+from requests import delete
 
 passwords = open('credenciais.txt', 'r')
 login = []
@@ -22,7 +27,7 @@ listaTipo = []
 dicioTipo = {}
 with open("TipoRequisicao.txt", encoding="UTF-8") as dicionarioTipoReq:
     for line in dicionarioTipoReq:
-       (k, v) = line.split()
+       (k, v) = line.split(';')
        dicioTipo[str(k)] = v
     for chave in dicioTipo.keys():
         listaTipo.append(chave)
@@ -50,8 +55,8 @@ for linhas in categorias_caminho:
 
 janela = Tk()
 
-janela.title('Automação requisição')
-janela.geometry('450x600+500+100')
+janela.title('Abertura de requisições')
+janela.geometry('350x600')
 
 def obterInfos():
     print(input_comentario.get())
@@ -65,62 +70,99 @@ def obterInfos():
     print(combo_item.get())
     print(combo_tipo.get())
 
-titulo_requisicao = Label(janela, text='Titulo da requisição')
-titulo_requisicao.grid(column=0, row=0, pady=10)
-input_titulo = Entry(janela, text='Titulo', width=40)
-input_titulo.grid(column=0, row=1)
+def limpar():
+    input_comentario.delete(0,"end")
+    input_data.delete(0,"end")
+    input_quantidade.delete(0,"end")
+    input_titulo.delete(0,"end")
+    input_valorUN.delete(0,"end")
+    input_arquivo.delete("1.0","end")
+    combo_categoria.set("")
+    combo_centroCusto.set("")
+    combo_filial.set("")
+    combo_item.set("")
+    combo_tipo.set("")
 
-tipo_requisicao = Label(janela, text='Tipo de requisição')
-tipo_requisicao.grid(column=0, row=2, pady=10)
-combo_tipo = Combobox(janela, width=40)
+def procurarArquivos():
+    filenames = askopenfilenames(
+        title='Procurar arquivos',
+    )
+    input_arquivo.insert(INSERT, filenames)
+
+def habilitaProcurar():
+    pass
+
+def desabilitaProcurar():
+    pass
+    
+
+titulo_requisicao = Label(janela, text='Titulo da requisição', font='calibri, 10')
+titulo_requisicao.grid(column=0, row=0, pady=5, columnspan=2)
+input_titulo = Entry(janela, text='Titulo', width=50)
+input_titulo.grid(column=0, row=1, pady=5, columnspan=2)
+
+tipo_requisicao = Label(janela, text='Tipo de requisição', font='calibri, 10')
+tipo_requisicao.grid(column=0, row=2, pady=5, columnspan=2)
+combo_tipo = Combobox(janela, width=47, state="readonly")
 combo_tipo['values']=(listaTipo)
-combo_tipo.grid(column=0, row=3)
+combo_tipo.grid(column=0, row=3, columnspan=2)
 
-item_requisicao = Label(janela, text='Item')
-item_requisicao.grid(column=0, row=4,  pady=10)
+item_requisicao = Label(janela, text='Item', font='calibri, 10')
+item_requisicao.grid(column=0, row=4,  pady=5)
 combo_item = Combobox(janela, width=20)
 combo_item['values']=(codigos)
 combo_item.grid(column=0, row=5)
 
-valorUN_requisicao = Label(janela, text='Valor unitário')
-valorUN_requisicao.grid(column=1, row=4, pady=10)
+valorUN_requisicao = Label(janela, text='Valor unitário', font='calibri, 10')
+valorUN_requisicao.grid(column=1, row=4, pady=5)
 input_valorUN = Entry(janela, text='valorunitario')
 input_valorUN.grid(column=1, row=5)
 
-quantidade_requisicao = Label(janela, text='Quantidade')
-quantidade_requisicao.grid(column=0, row=6, pady=10)
-input_quantidade = Entry(janela, text='quantidade', width=20)
+quantidade_requisicao = Label(janela, text='Quantidade', font='calibri, 10')
+quantidade_requisicao.grid(column=0, row=6, pady=5)
+input_quantidade = Entry(janela, text='quantidade', width=23)
 input_quantidade.grid(column=0, row=7)
 
-data_requisicao = Label(janela, text='Data esperada')
-data_requisicao.grid(column=1, row=6, pady=10)
+data_requisicao = Label(janela, text='Data esperada', font='calibri, 10')
+data_requisicao.grid(column=1, row=6, pady=5)
 input_data = Entry(janela, text='dataesperada', width=20)
 input_data.grid(column=1, row=7)
 
-categoria_requisicao = Label(janela, text='Selecione a categoria')
-categoria_requisicao.grid(column=0, row=8, pady=10)
-combo_categoria = Combobox(janela, width=25)
+categoria_requisicao = Label(janela, text='Selecione a categoria', font='calibri, 10')
+categoria_requisicao.grid(column=0, row=8, pady=5, padx=10)
+combo_categoria = Combobox(janela, width=25, state="readonly")
 combo_categoria['values']=(categorias)
-combo_categoria.grid(column=0, row=9)
+combo_categoria.grid(column=0, row=9, padx=10)
 
-centroCusto_requisicao = Label(janela, text='Centro de custo')
-centroCusto_requisicao.grid(column=1, row=8, pady=10)
-combo_centroCusto = Combobox(janela, width=20)
+centroCusto_requisicao = Label(janela, text='Centro de custo', font='calibri, 10')
+centroCusto_requisicao.grid(column=1, row=8, pady=5)
+combo_centroCusto = Combobox(janela, width=20, state="readonly")
 combo_centroCusto['values']=(centroCustos)
 combo_centroCusto.grid(column=1, row=9)
 
-filial_requisicao = Label(janela, text='Selecione a filial')
-filial_requisicao.grid(column=0, row=10, pady=10)
-combo_filial = Combobox(janela, width=40)
+filial_requisicao = Label(janela, text='Selecione a filial', font='calibri, 10')
+filial_requisicao.grid(column=0, row=10, pady=5, columnspan=2)
+combo_filial = Combobox(janela, width=50, state="readonly")
 combo_filial['values']=(filiais)
-combo_filial.grid(column=0, row=11)
+combo_filial.grid(column=0, row=11, columnspan=2)
 
-comentario_requisicao = Label(janela, text='Comentario:')
-comentario_requisicao.grid(column=0, row=12, pady=10)
+arquivo_requisicao = Label(janela, text='Selecionar arquivos:', font='calibri, 10')
+arquivo_requisicao.grid(column=0, row=12, pady=5, columnspan=2)
+input_arquivo = Text(janela, width=28, height=1)
+input_arquivo.grid(column=0, row=13, columnspan=2, padx=5, sticky=W)
+botaoProcuraArquivo = Button(janela, text='Procurar', command=procurarArquivos, width=10, font='calibri, 10').grid(column=1, row=13, pady=10, sticky=E)
+
+
+comentario_requisicao = Label(janela, text='Comentario:', font='calibri, 10')
+comentario_requisicao.grid(column=0, row=14, pady=5, columnspan=2)
 input_comentario = Entry(janela, text='comentario', width=40)
-input_comentario.grid(column=0, row=13)
+input_comentario.grid(column=0, row=15, columnspan=2)
 
-botaoCriar = Button(janela, text='Criar', command=obterInfos, width=20)
-botaoCriar.grid(column=0, row=14)
+botaoCriar = Button(janela, text='Criar', command=obterInfos, width=10, font='calibri, 10').grid(column=0, row=16, pady=10, padx=10, sticky=N)
+
+botaoCancelar = Button(janela, text='Cancelar',  width=10, font='calibri, 10', command=janela.destroy).grid(column=1, row=16, pady=10, sticky=S)
+
+botaoLimpar = Button(janela, text='Limpar', width=20, font='calibri, 10', command=limpar).grid(column=0, row=17, pady=10, columnspan= 2)
+
 
 janela.mainloop()
