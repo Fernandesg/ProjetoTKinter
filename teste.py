@@ -408,11 +408,6 @@ def abreArquivo(nome_arquivo):
 def threading():
     Thread(target=printTeste).start()
 
-def fecharjanelas():
-
-    janela.destroy()
-
-
 varcheckNavegador = BooleanVar()
 varmonitorReq = BooleanVar()
 
