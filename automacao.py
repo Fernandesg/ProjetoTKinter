@@ -1,10 +1,7 @@
-from faulthandler import disable
 from fileinput import filename
 from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
 from tkinter import *
-
-from requests import delete
 
 passwords = open('credenciais.txt', 'r')
 login = []

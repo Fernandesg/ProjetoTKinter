@@ -72,15 +72,15 @@ janela.title('Abertura de requisições')
 janela.geometry('350x600')
 
 menubar = Menu(janela)
-filemenu = Menu(menubar, tearoff=0)
-menubar.add_cascade(label="Arquivos", menu=filemenu)
-filemenu.add_command(label='Itens', command=lambda: abreArquivo('codigos.txt'))
-filemenu.add_command(label='Categorias', command=lambda: abreArquivo('categorias.txt'))
-filemenu.add_command(label='Centro de custos', command=lambda: abreArquivo('centrocustos.txt'))
-filemenu.add_command(label='Tipo requisição', command=lambda: abreArquivo('TipoRequisicao.txt'))
-filemenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.txt'))
-filemenu.add_separator()
-filemenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('credenciais.txt'))
+arquivomenu = Menu(menubar, tearoff=0)
+menubar.add_cascade(label="Arquivos", menu=arquivomenu)
+arquivomenu.add_command(label='Itens', command=lambda: abreArquivo('codigos.txt'))
+arquivomenu.add_command(label='Categorias', command=lambda: abreArquivo('categorias.txt'))
+arquivomenu.add_command(label='Centro de custos', command=lambda: abreArquivo('centrocustos.txt'))
+arquivomenu.add_command(label='Tipo requisição', command=lambda: abreArquivo('TipoRequisicao.txt'))
+arquivomenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.txt'))
+arquivomenu.add_separator()
+arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('credenciais.txt'))
 
 toaster = ToastNotifier()
 codLista = []
@@ -403,7 +403,12 @@ def abreArquivo(nome_arquivo):
 
     arquivo = open(nome_arquivo, "r", encoding="utf-8")
     conteudo = arquivo.read()
-    caixa_texto.insert(END, conteudo)
+    if nome_arquivo == 'TipoRequisicao.txt':
+        for tipo in listaTipo:
+            caixa_texto.insert(END, tipo + '\n')
+        print(listaTipo)
+    else:
+        caixa_texto.insert(END, conteudo)
 
 def threading():
     Thread(target=printTeste).start()
