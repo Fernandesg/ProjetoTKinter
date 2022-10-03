@@ -2,7 +2,6 @@ from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
 from tkinter import *
 from mttkinter import mtTkinter
-from tkinter import messagebox
 from tkcalendar import DateEntry 
 from time import sleep
 from playwright.sync_api import sync_playwright, TimeoutError
@@ -13,11 +12,18 @@ from datetime import date
 import webbrowser
 from win10toast_click import ToastNotifier 
 from threading import *
+from pynput.keyboard import Key, Controller
 
+dicioLogin = {}
+passwords2 = open('testeCredencial.txt', 'r')
+for linha in passwords2:
+    (x,y) = linha.split('=')
+    x = x.strip()
+    y= y.strip()
+    dicioLogin[x]=y
 
-passwords = open('credenciais.txt', 'r')
 login = []
-
+passwords = open('credenciais.txt', 'r')
 for linhas in passwords:
     linhas = linhas.strip()
     login.append(linhas)
@@ -27,7 +33,6 @@ site = login[2][8:-1]
 
 filiais_caminho = open('filiais.txt', 'r', encoding="UTF-8")
 filiais = []
-
 for linhas in filiais_caminho:
     linhas = linhas.strip()
     filiais.append(linhas)
@@ -45,7 +50,6 @@ with open("TipoRequisicao.txt", encoding="UTF-8") as dicionarioTipoReq:
 
 cod_caminho = open('codigos.txt', 'r', encoding="UTF-8")
 codigos = []
-
 for linhas in cod_caminho:
     linhas = linhas.strip()
     if linhas != '':
@@ -53,7 +57,6 @@ for linhas in cod_caminho:
 
 cc_caminho = open('centrocustos.txt', 'r', encoding="UTF-8")
 centroCustos = []
-
 for linhas in cc_caminho:
     linhas = linhas.strip()
     if linhas != '':
@@ -61,7 +64,6 @@ for linhas in cc_caminho:
 
 categorias_caminho = open('categorias.txt', 'r', encoding="UTF-8")
 categorias = []
-
 for linhas in categorias_caminho:
     linhas = linhas.strip()
     if linhas != '':
@@ -80,8 +82,9 @@ arquivomenu.add_command(label='Centro de custos', command=lambda: abreArquivo('c
 arquivomenu.add_command(label='Tipo requisição', command=lambda: abreArquivo('TipoRequisicao.txt'))
 arquivomenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.txt'))
 arquivomenu.add_separator()
-arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('credenciais.txt'))
+arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('testeCredencial.txt'))
 
+keyboard = Controller()
 toaster = ToastNotifier()
 codLista = []
 tabela = load_workbook('notas.xlsm', data_only=True)
@@ -378,37 +381,71 @@ def criarRequisicao(*args):
     except TimeoutError:
         toaster.show_toast(f'Erro ao criar a requisição.',f'Lentidão no mercado eletronico!\n Tente novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
       
-def salvarArquivo(nome_arquivo, conteudo):
-    arquivo = open(nome_arquivo, "w")
-    arquivo.write(conteudo)
-    print(conteudo)
-    print(nome_arquivo)
-    arquivo.close()
+def salvarArquivo(nome_arquivo):
+
+    if nome_arquivo == 'testeCredencial.txt':
+        with open(nome_arquivo, 'w') as credenciais:
+            credencial=f"usuario_me={credencialUser.get()}\nsenha_me={credencialSenha.get()}\nsite={credencialSite.get()}"
+            credenciais.write(credencial)
 
 def abreArquivo(nome_arquivo):
-    print(nome_arquivo)
+    global credencialUser
+    global credencialSite
+    global credencialSenha
+    credencialUser = StringVar()
+    credencialSite = StringVar()
+    credencialSenha = StringVar()
+
+    
+    #Cria segunda janela
     titulo = nome_arquivo.split('.')[0]
     janelaArquivos = Toplevel(janela)
     janelaArquivos.title(f'Editar informações de {titulo}')
-    janelaArquivos.geometry('400x250')
-    mensagem = Label(janelaArquivos, text='Inserir uma informação em cada linha!', font='calibri 11')
-    mensagem.place(relx=.2, rely=0.02)
-    caixa_texto = Text(janelaArquivos, height=10, width=40)
-    caixa_texto.place(relx=.1, rely=0.15)
-    botao_salvar = Button(janelaArquivos, text='Salvar', width=12 ,command=lambda: salvarArquivo(nome_arquivo, caixa_texto.get(1.0, END)))
-    botao_salvar.place(relx=0.1, rely=0.85)
-    botao_cancelar = Button(janelaArquivos, text='Cancelar', width=12 ,command=janelaArquivos.destroy)
-    botao_cancelar.place(relx=0.68, rely=0.85)
+    mensagem = Label(janelaArquivos, text='', font='calibri 11')
+    listbox = Listbox(janelaArquivos, height=13, width=30)
+    caixa_texto = Text(janelaArquivos, height=13, width=40)
+    labelUser = Label(janelaArquivos,text='Usuário:')
+    labelSenha = Label(janelaArquivos,text='Senha:')
+    labelSite = Label(janelaArquivos,text='Site:')
+    credencialUser = Entry(janelaArquivos,textvariable=credencialUser, width=20)
+    credencialSenha = Entry(janelaArquivos,textvariable=credencialSenha, width=20)
+    credencialSite = Entry(janelaArquivos,textvariable= credencialSite, width=20)
+    botao_salvar = Button(janelaArquivos, text='Salvar', width=12, command=lambda: salvarArquivo(nome_arquivo))
+    botao_cancelar = Button(janelaArquivos, text='Cancelar', width=12, command=janelaArquivos.destroy)
     
-
+    #Abre arquivo
     arquivo = open(nome_arquivo, "r", encoding="utf-8")
     conteudo = arquivo.read()
-    if nome_arquivo == 'TipoRequisicao.txt':
-        for tipo in listaTipo:
-            caixa_texto.insert(END, tipo + '\n')
-        print(listaTipo)
+    if nome_arquivo == 'testeCredencial.txt':
+        janelaArquivos.geometry('400x200')
+        mensagem.configure(text='Adicionar informações de login!')
+        mensagem.place(relx=.28, rely=0.02)
+        labelUser.place(relx=0.25, rely=0.14)       
+        labelSenha.place(relx=0.25, rely=0.29)       
+        labelSite.place(relx=0.25, rely=0.44)       
+        credencialUser.place(relx=.48, rely=0.15)  
+        credencialSenha.place(relx=.48, rely=0.30)         
+        credencialSite.place(relx=.48, rely=0.45)         
+        credencialUser.insert(END, dicioLogin['usuario_me'])
+        credencialSenha.insert(END, dicioLogin['senha_me'])
+        credencialSite.insert(END, dicioLogin['site'])
+        botao_salvar.place(relx=0.2, rely=0.83)
+        botao_cancelar.place(relx=0.55, rely=0.83)
+    elif nome_arquivo == 'filiais.txt':
+        janelaArquivos.geometry('400x300')
+        var = Variable(value=filiais)
+
+        listbox.configure(listvariable=var)
+        listbox.place(relx=.1, rely=0.15)    
     else:
-        caixa_texto.insert(END, conteudo)
+        janelaArquivos.geometry('400x300')
+        mensagem.configure(text='Inserir uma informação em cada linha!')
+        mensagem.place(relx=.2, rely=0.02)
+        caixa_texto.place(relx=.1, rely=0.15)
+        caixa_texto.insert(END, conteudo)  
+        botao_salvar.place(relx=0.1, rely=0.89)
+        botao_cancelar.place(relx=0.67, rely=0.89)
+
 
 def threading():
     Thread(target=printTeste).start()
@@ -421,7 +458,7 @@ checkNavegador.place(relx=.02, rely=.02)
 
 monitorReq = Checkbutton(janela, text='Monitor',variable=varmonitorReq, onvalue=True, offvalue=False, command=threading)
 monitorReq.place(relx=.78, rely=.02)
-monitorReq.select()
+# monitorReq.select()
 if varmonitorReq.get() is True:
     Thread(target=printTeste).start()
 
