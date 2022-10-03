@@ -1,7 +1,6 @@
 from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
 from tkinter import *
-from unittest import result
 from mttkinter import mtTkinter
 from tkcalendar import DateEntry 
 from time import sleep
@@ -84,6 +83,10 @@ arquivomenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.tx
 arquivomenu.add_separator()
 arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('testeCredencial.txt'))
 
+configmenu = Menu(menubar, tearoff=0)
+menubar.add_cascade(label="Configurações", menu=configmenu)
+configmenu.add_command(label='Configurar monitor', command=lambda: configMonitor())
+
 toaster = ToastNotifier()
 codLista = []
 tabela = load_workbook('notas.xlsm', data_only=True)
@@ -91,94 +94,135 @@ aba_ativa = tabela['REQUISIÇÕES PENDENTES']
 ultimaLinha = 'B' + str(len(aba_ativa['B'])+1)
 filenames = ''
 
-def obterInfos(*args):
+def configMonitor():
+    janelaConfig = Toplevel(janela)
+    janelaConfig.title(f'Editar configurações')
+    janelaConfig.geometry('400x300')
+
+    labelTitulo = Label(janelaConfig,text='Inserir as letras das colunas no Excel!', font='calibri 11')
+    labelTitulo.place(relx=.03, rely=.05)
+
+    labelEntryNF = Label(janelaConfig,text='NF', font='calibri 10')
+    labelEntryNF.place(relx=.03, rely=.2)
+    entryNF = Entry(janelaConfig, width=10)
+    entryNF.place(relx=.03, rely = .3)
+
+    labelentryRequisicao = Label(janelaConfig,text='Requisição', font='calibri 10')
+    labelentryRequisicao.place(relx=.26, rely=.2)
+    entryRequisicao = Entry(janelaConfig, width=10)
+    entryRequisicao.place(relx=.26, rely = .3)
+
+    labelentryDataAbertura = Label(janelaConfig,text='Data de abertura', font='calibri 10')
+    labelentryDataAbertura.place(relx=.5, rely=.2)
+    entryDataAbertura = Entry(janelaConfig, width=10)
+    entryDataAbertura.place(relx=.5, rely = .3)
+
+    labelentryCNPJ = Label(janelaConfig,text='CNPJ fornecedor', font='calibri 10')
+    labelentryCNPJ.place(relx=.75, rely=.2)
+    entryCNPJ = Entry(janelaConfig, width=10)
+    entryCNPJ.place(relx=0.75, rely = .3)
+
+    labelentryNumPrePedido = Label(janelaConfig,text='Nº pedido', font='calibri 10')
+    labelentryNumPrePedido.place(relx=.03, rely=.4)
+    entryNumPrePedido = Entry(janelaConfig, width=10)
+    entryNumPrePedido.place(relx=0.03, rely = .5)
+
+    labelentryDataPrePedido = Label(janelaConfig,text='Data Pré-Pedido', font='calibri 10')
+    labelentryDataPrePedido.place(relx=.26, rely=.4)
+    entryDataPrePedido = Entry(janelaConfig, width=10)
+    entryDataPrePedido.place(relx=.26, rely = .5)
+
+    labelentryPedido = Label(janelaConfig,text='Nº Pedido', font='calibri 10')
+    labelentryPedido.place(relx=.5, rely=.4)
+    entryPedido = Entry(janelaConfig, width=10)
+    entryPedido.place(relx=0.5, rely = .5)
+
+    labelentryStatus = Label(janelaConfig,text='Status', font='calibri 10')
+    labelentryStatus.place(relx=.75, rely=.4)
+    entryStatus = Entry(janelaConfig, width=10)
+    entryStatus.place(relx=.75, rely = .5)
     
-    print(input_comentario.get())
-    print(input_data.get_date().strftime("%d/%m/%Y"))
-    print(input_quantidade.get())
-    print(input_titulo.get())
-    print(input_valorUN.get())
-    print(combo_categoria.get())
-    print(combo_centroCusto.get())
-    print(combo_filial.get())
-    print(combo_item.get())
-    print(combo_tipo.get())
-    print(varcheckNavegador.get())
-    print(varmonitorReq.get())
-    
-def printTeste(): 
-    while True:
-        if varmonitorReq.get() is True:    
-            sleep(1)
-            print('monitorando: ', varmonitorReq.get())  
-        else:
-            break
+    labelentryNomeAba = Label(janelaConfig,text='Nome da aba', font='calibri 10')
+    labelentryNomeAba.place(relx=.03, rely=.6)
+    entryNomeAba = Entry(janelaConfig, width=30)
+    entryNomeAba.place(relx=.03, rely = .7)
+
+    botaoSalvar = Button(janelaConfig,text='Salvar', font='calibri 11', width=8)
+    botaoSalvar.place(relx=.03, rely=.8)
+    entryNomeAba = Button(janelaConfig,text='Cancelar', font='calibri 11' ,width=8)
+    entryNomeAba.place(relx=.75, rely = .8)
 
 def monitorME():
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(channel="chrome", headless=False)
-            page = browser.new_page()
-            page.goto(site)
+    while True:
+        sleep(300)
+        print('Monitor executado')
+        if varmonitorReq.get() is True: 
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(channel="chrome", headless=False)
+                    page = browser.new_page()
+                    page.goto(site)
 
-            # LOGIN ME
-            page.locator('xpath=//*[@id="LoginName"]').fill(usuario_me)
-            page.locator('xpath=//*[@id="RAWSenha"]').fill(senha_me)
-            page.locator('xpath=//*[@id="SubmitAuth"]').click()
-            page.wait_for_timeout(1)
+                    # LOGIN ME
+                    page.locator('xpath=//*[@id="LoginName"]').fill(usuario_me)
+                    page.locator('xpath=//*[@id="RAWSenha"]').fill(senha_me)
+                    page.locator('xpath=//*[@id="SubmitAuth"]').click()
+                    page.wait_for_timeout(1)
 
-            # ANALISA STATUS DA REQUISIÇÃO E ATUALIZA PLANILHA
-            for celula in aba_ativa['I']:
-                linha = celula.row
-                if celula.value == 'Pendente' and aba_ativa[f'E{linha}'].value == None:
-                    cnpj = aba_ativa[f'D{linha}'].value
-                    reqPendente = aba_ativa[f'B{linha}'].value
-                    page.goto(f'https://www.me.com.br/DO/Request/Home.mvc/Show/{reqPendente}')
-                    statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
-                    filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
+                    # ANALISA STATUS DA REQUISIÇÃO E ATUALIZA PLANILHA
+                    for celula in aba_ativa['I']:
+                        linha = celula.row
+                        if celula.value == 'Pendente' and aba_ativa[f'E{linha}'].value == None:
+                            cnpj = aba_ativa[f'D{linha}'].value
+                            reqPendente = aba_ativa[f'B{linha}'].value
+                            page.goto(f'https://www.me.com.br/DO/Request/Home.mvc/Show/{reqPendente}')
+                            statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
+                            filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
 
-                    if statusRequisicao == 'APROVADO':
-                    #CRIAR PRE-PEDIDO
-                        toaster.show_toast(f'Requisição aprovada!',f'Requisição {reqPendente} aprovada! \n Criando pré-pedido',icon_path=None, duration=10, threaded=True)
-                        page.locator('xpath=//*[@id="btnEmergency"]').click()
-                        page.locator('xpath=/html/body/div[1]/div[3]/div/button[1]/span').click()
-                        page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
-                        page.locator('xpath=//*[@id="CGC"]').fill(cnpj)
-                        page.keyboard.press('Enter')
-                        page.locator('xpath=//*[@id="grid"]/div[2]/table/tbody/tr/td[1]/div/input').click()
-                        page.locator('xpath=//*[@id="btnSalvarSelecao"]').click()
-                        page.locator('xpath=//*[@id="btnVoltarPrePedEmergencial"]').click()
-                        page.locator('xpath=//*[@id="Resumo"]').fill(input_data.get_date().strftime("%d/%m/%Y"))
-                        filiaisPrePedido = page.locator('//select[@name="LocalCobranca"]').inner_html().split('\n')
-                        indice = [i for i, s in enumerate(filiaisPrePedido) if filial_requisicao in s][0]
-                        page.locator('//select[@name="LocalCobranca"]').select_option(index=indice-1)
-                        page.locator('xpath=//*[@id="DataEntrega"]').fill(input_titulo.get())
-                        page.locator('xpath=//*[@id="MEComponentManager_MEButton_3"]').click()
-                        page.locator('xpath=/html/body/main/form[2]/table[3]/tbody/tr[1]/td/input[1]').click()
-                        page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
-                        page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
-                        page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]/a').click()
-                        numPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p').inner_html().strip()
-                        statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()
-                        aba_ativa[f'F{linha}'] = date.today().strftime('%d/%m/%Y')
-                        aba_ativa[f'E{linha}'] = numPrePedido
-                    
-                if celula.value == 'Pendente' and aba_ativa[f'E{linha}'].value != None:
-                    
-                    prePedidoPendente = aba_ativa[f'E{linha}'].value
-                    page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
-                    statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()[:8]
-                    if statusPrePedido == 'APROVADO':
-                        numPedidoSAP = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p[1]').inner_html().strip()
-                        aba_ativa[f'G{linha}'] = numPedidoSAP
-                        toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP} \nclique para abrir no navegador!',icon_path=None, duration=10, threaded=True,
-                        callback_on_click=lambda: webbrowser.open(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home'))
-        tabela.save('Tabelateste.xlsx')
+                            if statusRequisicao == 'APROVADO':
+                            #CRIAR PRE-PEDIDO
+                                toaster.show_toast(f'Requisição aprovada!',f'Requisição {reqPendente} aprovada! \n Criando pré-pedido',icon_path=None, duration=10, threaded=True)
+                                page.locator('xpath=//*[@id="btnEmergency"]').click()
+                                page.locator('xpath=/html/body/div[1]/div[3]/div/button[1]/span').click()
+                                page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
+                                page.locator('xpath=//*[@id="CGC"]').fill(cnpj)
+                                page.keyboard.press('Enter')
+                                page.locator('xpath=//*[@id="grid"]/div[2]/table/tbody/tr/td[1]/div/input').click()
+                                page.locator('xpath=//*[@id="btnSalvarSelecao"]').click()
+                                page.locator('xpath=//*[@id="btnVoltarPrePedEmergencial"]').click()
+                                page.locator('xpath=//*[@id="Resumo"]').fill(input_data.get_date().strftime("%d/%m/%Y"))
+                                filiaisPrePedido = page.locator('//select[@name="LocalCobranca"]').inner_html().split('\n')
+                                indice = [i for i, s in enumerate(filiaisPrePedido) if filial_requisicao in s][0]
+                                page.locator('//select[@name="LocalCobranca"]').select_option(index=indice-1)
+                                page.locator('xpath=//*[@id="DataEntrega"]').fill(input_titulo.get())
+                                page.locator('xpath=//*[@id="MEComponentManager_MEButton_3"]').click()
+                                page.locator('xpath=/html/body/main/form[2]/table[3]/tbody/tr[1]/td/input[1]').click()
+                                page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
+                                page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
+                                page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]/a').click()
+                                numPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p').inner_html().strip()
+                                statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()
+                                aba_ativa[f'F{linha}'] = date.today().strftime('%d/%m/%Y')
+                                aba_ativa[f'E{linha}'] = numPrePedido
+                            
+                        if celula.value == 'Pendente' and aba_ativa[f'E{linha}'].value != None:
+                            
+                            prePedidoPendente = aba_ativa[f'E{linha}'].value
+                            page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
+                            statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()[:8]
+                            if statusPrePedido == 'APROVADO':
+                                numPedidoSAP = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p[1]').inner_html().strip()
+                                aba_ativa[f'G{linha}'] = numPedidoSAP
+                                toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP} \nclique para abrir no navegador!',icon_path=None, duration=10, threaded=True,
+                                callback_on_click=lambda: webbrowser.open(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home'))
+                tabela.save('Tabelateste.xlsx')
 
-    except TimeoutError:
-        toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \n Lentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
-        
-        tabela.save('Tabelateste.xlsx')
+            except TimeoutError:
+                toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \n Lentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
+                
+                tabela.save('Tabelateste.xlsx')
+        else:
+            break        
 
 def limpar():
     input_comentario.delete(0,"end")
@@ -612,7 +656,7 @@ def abreArquivo(nome_arquivo):
         print(dicioTipo)
 
 def threading():
-    Thread(target=printTeste).start()
+    Thread(target=monitorME).start()
 
 varcheckNavegador = BooleanVar()
 varmonitorReq = BooleanVar()
@@ -624,7 +668,7 @@ monitorReq = Checkbutton(janela, text='Monitor',variable=varmonitorReq, onvalue=
 monitorReq.place(relx=.78, rely=.02)
 # monitorReq.select()
 if varmonitorReq.get() is True:
-    Thread(target=printTeste).start()
+    Thread(target=monitorME).start()
 
 titulo_requisicao = Label(janela, text='Titulo da requisição', font='calibri, 10')
 titulo_requisicao.place(relx=.35, rely=.02)
@@ -688,7 +732,7 @@ comentario_requisicao.place(relx=.41, rely=.5)
 input_comentario = Entry(janela, text='comentario', width=40)
 input_comentario.place(relx=.15, rely=.54)
 
-botaoCriar = Button(janela, text='Criar', command=obterInfos, width=15, font='calibri, 10')
+botaoCriar = Button(janela, text='Criar', command=criarRequisicao, width=15, font='calibri, 10')
 botaoCriar.place(relx=.02, rely=.60)
 botaoCancelar = Button(janela, text='Cancelar',  width=15, font='calibri, 10', command=janela.destroy)
 botaoCancelar.place(relx=.42, rely=.60)
@@ -708,4 +752,5 @@ caixa_numero_req = Text(janela, font='calibri, 10', width=15, height= 1)
 
 janela.protocol("WM_DELETE_WINDOW", janela.destroy)
 janela.config(menu=menubar)
+
 janela.mainloop()

@@ -1,0 +1,3 @@
+usuario_me = "USUARIO"
+senha_me = "SENHA"
+site = "SITE"
