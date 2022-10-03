@@ -12,7 +12,6 @@ from datetime import date
 import webbrowser
 from win10toast_click import ToastNotifier 
 from threading import *
-from pynput.keyboard import Key, Controller
 
 dicioLogin = {}
 passwords2 = open('testeCredencial.txt', 'r')
@@ -84,7 +83,6 @@ arquivomenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.tx
 arquivomenu.add_separator()
 arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('testeCredencial.txt'))
 
-keyboard = Controller()
 toaster = ToastNotifier()
 codLista = []
 tabela = load_workbook('notas.xlsm', data_only=True)
