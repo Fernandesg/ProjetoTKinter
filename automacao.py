@@ -1,7 +1,6 @@
 from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
-# from tkinter import *
-from mttkinter import mtTkinter as tk
+from tkinter import *
 from tkcalendar import DateEntry 
 from time import sleep
 from playwright.sync_api import sync_playwright, TimeoutError
@@ -69,12 +68,12 @@ with open('configExcel.txt', 'r', encoding='ISO-8859-1') as configexcel:
 nomeplanilha = dicioConfig['NOMEARQUIVO'].split('/')[-1]
 nomeplanilhaSemext=nomeplanilha.split('.')
 
-janela = tk.Tk()
+janela = Tk()
 janela.title('Abertura de requisições')
 janela.geometry('350x600')
 
-menubar = tk.Menu(janela)
-arquivomenu = tk.Menu(menubar, tearoff=0)
+menubar = Menu(janela)
+arquivomenu = Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Arquivos", menu=arquivomenu)
 arquivomenu.add_command(label='Itens', command=lambda: abreArquivo('codigos.txt'))
 arquivomenu.add_command(label='Categorias', command=lambda: abreArquivo('categorias.txt'))
@@ -84,7 +83,7 @@ arquivomenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.tx
 arquivomenu.add_separator()
 arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('credenciais.txt'))
 
-configmenu = tk.Menu(menubar, tearoff=0)
+configmenu = Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Configurações", menu=configmenu)
 configmenu.add_command(label='Configurar monitor', command=lambda: configMonitor())
 
@@ -108,20 +107,20 @@ def configMonitor():
     global janelaConfig
     global entryNomeArquivo
 
-    janelaConfig = tk.Toplevel(janela)
+    janelaConfig = Toplevel(janela)
     janelaConfig.title(f'Editar configurações')
     janelaConfig.geometry('400x300')
 
-    EntryNF = tk.StringVar()
-    entryRequisicao = tk.StringVar()
-    entryDataAbertura = tk.StringVar()
-    entryCNPJ = tk.StringVar()
-    entryNumPrePedido = tk.StringVar()
-    entryDataPrePedido = tk.StringVar()
-    entryPedido = tk.StringVar()
-    entryStatus = tk.StringVar()
-    entryNomeAba = tk.StringVar()
-    entryNomeArquivo = tk.StringVar()
+    EntryNF = StringVar()
+    entryRequisicao = StringVar()
+    entryDataAbertura = StringVar()
+    entryCNPJ = StringVar()
+    entryNumPrePedido = StringVar()
+    entryDataPrePedido = StringVar()
+    entryPedido = StringVar()
+    entryStatus = StringVar()
+    entryNomeAba = StringVar()
+    entryNomeArquivo = StringVar()
 
     labelTitulo = Label(janelaConfig,text='Inserir as letras das colunas no Excel!', font='calibri 11')
     labelTitulo.place(relx=.03, rely=.05)
@@ -195,7 +194,7 @@ def configMonitor():
 
 def monitorME():
     while True:
-        sleep(30)
+        sleep(300)
 
         if varmonitorReq.get() is True: 
             try:
@@ -269,8 +268,7 @@ def monitorME():
                 toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \n Lentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
                 
         else:
-            
-            break        
+            return        
 
 def limpar():
     input_comentario.delete(0,"end")
@@ -299,9 +297,9 @@ def procurarArquivos(janela):
     )
     if janela == 'configExcel':
         entryNomeArquivo.delete(0, "end")
-        entryNomeArquivo.insert(tk.INSERT, filenames[0])
+        entryNomeArquivo.insert(INSERT, filenames[0])
     else:
-        input_arquivo.insert(tk.INSERT, filenames[0])
+        input_arquivo.insert(INSERT, filenames[0])
     
 def habilitaProcurar(*args):
     if combo_categoria.get() == "PEDIDO REGULARIZACAO":
@@ -467,7 +465,7 @@ def criarRequisicao(*args):
             mensagem_titulo.place(relx= .35, rely=.77)
             mensagem_titulo['text'](titulo_requisicao)
             mensagem_numero_req.place(relx= .02, rely=.82)
-            mensagem_numero_req.insert(tk.INSERT, requisicao.inner_html().strip()[4:])
+            mensagem_numero_req.insert(INSERT, requisicao.inner_html().strip()[4:])
             if cat_Pedido == 'PEDIDO REGULARIZACAO':
                 aba_ativa[ultimaLinha] = requisicao
     
@@ -558,20 +556,20 @@ def abreArquivo(nome_arquivo):
     global caixa_item
     global caixa_adicionar
 
-    credencialUser = tk.StringVar()
-    credencialSite = tk.StringVar()
-    credencialSenha = tk.StringVar()
-    caixa_item = tk.StringVar()
+    credencialUser = StringVar()
+    credencialSite = StringVar()
+    credencialSenha = StringVar()
+    caixa_item = StringVar()
 
     #Cria segunda janela
     titulo = nome_arquivo.split('.')[0]
-    janelaArquivos = tk.Toplevel(janela)
+    janelaArquivos = Toplevel(janela)
     janelaArquivos.title(f'Editar informações de {titulo}')
     mensagem = Label(janelaArquivos, text='', font='calibri 11')
     mensagemTitulo = Label(janelaArquivos, text='', font='calibri 11')
     labelSelecaoTitulo = Label(janelaArquivos, text='', font='calibri 11')
     labelSelecao = Label(janelaArquivos, text='', font='calibri 11')
-    listbox = tk.Listbox(janelaArquivos, height=13, width=30)
+    listbox = Listbox(janelaArquivos, height=13, width=30)
     caixa_item = Entry(janelaArquivos, textvariable=caixa_item)
     caixa_adicionar = Entry(janelaArquivos, textvariable=credencialUser, width=43)
     
@@ -602,9 +600,9 @@ def abreArquivo(nome_arquivo):
         credencialUser.place(relx=.48, rely=0.15)  
         credencialSenha.place(relx=.48, rely=0.30)         
         credencialSite.place(relx=.48, rely=0.45)         
-        credencialUser.insert(tk.END, dicioLogin['usuario_me'])
-        credencialSenha.insert(tk.END, dicioLogin['senha_me'])
-        credencialSite.insert(tk.END, dicioLogin['site'])
+        credencialUser.insert(END, dicioLogin['usuario_me'])
+        credencialSenha.insert(END, dicioLogin['senha_me'])
+        credencialSite.insert(END, dicioLogin['site'])
         botao_salvar.place(relx=0.2, rely=0.83)
         botao_cancelar.place(relx=0.55, rely=0.83)
     
@@ -622,7 +620,7 @@ def abreArquivo(nome_arquivo):
         labelSelecao.place(relx=0.43, rely=0.4)
         labelSelecao.configure(text='')
 
-        var = tk.Variable(value=conteudo.split('\n'))
+        var = Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -645,7 +643,7 @@ def abreArquivo(nome_arquivo):
         labelSelecao.place(relx=0.43, rely=0.4)
         labelSelecao.configure(text='')
 
-        var = tk.Variable(value=conteudo.split('\n'))
+        var = Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -669,7 +667,7 @@ def abreArquivo(nome_arquivo):
         labelSelecao.place(relx=0.47, rely=0.4)
         labelSelecao.configure(text='')
 
-        var = tk.Variable(value=conteudo.split('\n'))
+        var = Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -684,7 +682,7 @@ def abreArquivo(nome_arquivo):
         labelSelecaoTitulo.configure(text='Item selecionado: ')
         labelSelecao.place(relx=0.5, rely=0.43)
         labelSelecao.configure(text='')
-        var = tk.Variable(value=conteudo.split('\n'))
+        var = Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var, width=20)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -714,7 +712,7 @@ def abreArquivo(nome_arquivo):
         labelSelecaoTitulo.configure(text='Descrição selecionada: ')
         labelSelecao.place(relx=0.43, rely=0.4)
         labelSelecao.configure(text='')
-        var = tk.Variable(value=list(dicioTipo.keys()))
+        var = Variable(value=list(dicioTipo.keys()))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=dicioTipo[listbox.get(listbox.curselection())].strip() + " - " + listbox.get(listbox.curselection())))
@@ -724,15 +722,17 @@ def abreArquivo(nome_arquivo):
         botao_remover.place(relx=0.77, rely=0.48)
 
 def threading():
-    Thread(target=monitorME).start()
+    thread = Thread(target=monitorME)
+    thread.start()
+
     if varmonitorReq.get() is True:
         toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
     if varmonitorReq.get() is False:
         
         toaster.show_toast(f'Monitoramento desativado!',f'Você desativou o monitoramento de requisições.',icon_path=None, duration=8, threaded=True)
 
-varcheckNavegador = tk.BooleanVar()
-varmonitorReq = tk.BooleanVar()
+varcheckNavegador = BooleanVar()
+varmonitorReq = BooleanVar()
 
 checkNavegador = Checkbutton(janela, text='Abre Nav',variable=varcheckNavegador, offvalue=False, onvalue=True)
 checkNavegador.place(relx=.02, rely=.02)
@@ -798,7 +798,7 @@ combo_filial['values']=(filiais)
 combo_filial.place(relx=.02, rely=.45)
 
 arquivo_requisicao = Label(janela, text='Selecionar arquivos:', font='calibri, 10')
-input_arquivo = tk.Text(janela, width=28, height=1)
+input_arquivo = Text(janela, width=28, height=1)
 botaoProcuraArquivo = Button(janela, text='Procurar', command=lambda: procurarArquivos('PEDIDOREGULARIZACAO'), width=10, font='calibri, 10')
 
 comentario_requisicao = Label(janela, text='Comentario:', font='calibri, 10')
@@ -821,7 +821,7 @@ mensagem_titulo = Label(janela, text="", font='calibri, 12')
 mensagem_titulo.place(relx= .27, rely=.77)
 mensagem_numero_req = Label(janela, text="", font='calibri, 11')
 mensagem_numero_req.place(relx= .15, rely=.82)
-caixa_numero_req = tk.Text(janela, font='calibri, 10', width=15, height= 1)
+caixa_numero_req = Text(janela, font='calibri, 10', width=15, height= 1)
 
 
 janela.protocol("WM_DELETE_WINDOW", janela.destroy)
