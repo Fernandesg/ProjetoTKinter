@@ -1,13 +1,14 @@
 from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
 from tkinter import *
+from numpy import place
 from tkcalendar import DateEntry 
+from mttkinter import mtTkinter
 from time import sleep
 from playwright.sync_api import sync_playwright, TimeoutError
-from datetime import datetime
+from datetime import datetime, date
 import smtplib
 from openpyxl import Workbook, load_workbook
-from datetime import date
 import webbrowser
 from win10toast_click import ToastNotifier 
 from threading import *
@@ -92,7 +93,6 @@ codLista = []
 tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
 aba_ativa = tabela[dicioConfig['NOMEABA']]
 ultimaLinha = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
-filenames = ''
 
 def configMonitor():
     global EntryNF 
@@ -193,13 +193,14 @@ def configMonitor():
     botaoCancelar.place(relx=.75, rely = .8)
 
 def monitorME():
+    global varmonitorReq
     while True:
-        sleep(300)
-
-        if varmonitorReq.get() is True: 
+        if varmonitorReq:
+            sleep(5)
+            print(datetime.now().strftime('%H:%M:%S'))
             try:
                 with sync_playwright() as p:
-                    browser = p.chromium.launch(channel="chrome")
+                    browser = p.chromium.launch(channel="chrome", headless=False)
                     page = browser.new_page()
                     page.goto(dicioLogin['site'])
 
@@ -212,14 +213,16 @@ def monitorME():
                     # ANALISA STATUS DA REQUISIÇÃO E ATUALIZA PLANILHA
                     for celula in aba_ativa[dicioConfig['STATUS']]:
                         linha = celula.row
-
+                        
                         if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value == None:
-                            cnpj = aba_ativa[dicioConfig['CNPJ'] + str(linha)].value
+                            cnpj = str(aba_ativa[dicioConfig['CNPJ'] + str(linha)].value)
                             reqPendente = aba_ativa[dicioConfig['REQUISICAO']+str(linha)].value
                             page.goto(f'https://www.me.com.br/DO/Request/Home.mvc/Show/{reqPendente}')
+                            tituloreq = page.locator('//*[@id="formRequest"]/div/div[2]/div[1]/p[1]').inner_html().strip()
                             statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
                             filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
-
+                            print(reqPendente)
+                            print(statusRequisicao)
                             if statusRequisicao == 'APROVADO':
                             #CRIAR PRE-PEDIDO
                                 toaster.show_toast(f'Requisição aprovada!',f'Requisição {reqPendente} aprovada! \n Criando pré-pedido',icon_path=None, duration=10, threaded=True)
@@ -231,8 +234,12 @@ def monitorME():
                                 page.locator('xpath=//*[@id="grid"]/div[2]/table/tbody/tr/td[1]/div/input').click()
                                 page.locator('xpath=//*[@id="btnSalvarSelecao"]').click()
                                 page.locator('xpath=//*[@id="btnVoltarPrePedEmergencial"]').click()
-                                page.locator('xpath=//*[@id="Resumo"]').fill(input_data.get_date().strftime("%d/%m/%Y"))
+                                page.locator('xpath=//*[@id="Resumo"]').fill(tituloreq)
+                                page.locator('//*[@id="DataEntrega"]').fill(input_data.get_date().strftime("%d/%m/%Y"))
                                 filiaisPrePedido = page.locator('//select[@name="LocalCobranca"]').inner_html().split('\n')
+                                print(filiaisPrePedido)
+                                print(filial_requisicao)
+                                print(enumerate(filiaisPrePedido))
                                 indice = [i for i, s in enumerate(filiaisPrePedido) if filial_requisicao in s][0]
                                 page.locator('//select[@name="LocalCobranca"]').select_option(index=indice-1)
                                 page.locator('xpath=//*[@id="DataEntrega"]').fill(input_titulo.get())
@@ -256,20 +263,22 @@ def monitorME():
                                 aba_ativa[dicioConfig['PEDIDO']+str(linha)] = numPedidoSAP
                                 toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP} \nClique para abrir no navegador!',icon_path=None, duration=8, threaded=True,
                                 callback_on_click=lambda: webbrowser.open(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home'))
-                sleep(15)
+
+                    sleep(10)
                 try:
-                    tabela.save('Tabelateste.xlsx')
+                    print(nomeplanilha)
+                    tabela.save(nomeplanilha)
                 except PermissionError:
 
                     toaster.show_toast(f'Erro ao salvar a planilha!',f'Provavelmente a planilha {nomeplanilha} está aberta no computador \nSalvando uma planilha temporaria no local!',icon_path=None, duration=10, threaded=True)
-                    tabela.save(f'{nomeplanilhaSemext[0]}Temp.{nomeplanilhaSemext[1]}')
+                    tabela.save(f'{nomeplanilhaSemext[0]}_Temp.{nomeplanilhaSemext[1]}')
                     
             except TimeoutError:
                 toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \n Lentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
                 
         else:
-            return        
-
+            break
+      
 def limpar():
     input_comentario.delete(0,"end")
     input_data.delete(0,"end")
@@ -292,9 +301,11 @@ def limpar():
     habilitaProcurar()
     
 def procurarArquivos(janela):
+    global filenames
     filenames = askopenfilenames(
         title='Procurar arquivos',
     )
+    
     if janela == 'configExcel':
         entryNomeArquivo.delete(0, "end")
         entryNomeArquivo.insert(INSERT, filenames[0])
@@ -311,6 +322,9 @@ def habilitaProcurar(*args):
         botaoCriar.place(relx=.02, rely=.69)
         botaoCancelar.place(relx=.42, rely=.69)
         botaoLimpar.place(relx=.83, rely=.69)
+        titulo_progress_bar.place(relx= .1, rely=.75)
+        
+        
     else:
         arquivo_requisicao.place_forget()
         input_arquivo.place_forget()
@@ -320,6 +334,7 @@ def habilitaProcurar(*args):
         botaoCriar.place(relx=.02, rely=.60)
         botaoCancelar.place(relx=.42, rely=.60)
         botaoLimpar.place(relx=.83, rely=.60)
+        titulo_progress_bar.place(relx= .1, rely=.68)
 
 def atualizaCodigo(*args):
     codLista.append(dicioTipo[combo_tipo.get()])
@@ -327,13 +342,13 @@ def atualizaCodigo(*args):
 
 def criarRequisicao(*args):
     comentario = input_comentario.get()
-    caminho_arquivo = str(filenames).split(';')
+    caminho_arquivo = list(filenames)
     centro_custo = combo_centroCusto.get()
     cat_Pedido = combo_categoria.get()
     titulo_requisicao = input_titulo.get()
-    item = str(combo_item.get()).strip().split(";")
-    valorun = str(input_valorUN.get()).strip().split(";")
-    quant = str(input_quantidade.get()).split(";")
+    item = combo_item.get().strip().split(";")
+    valorun = input_valorUN.get().strip().split(";")
+    quant = input_quantidade.get().split(";")
     data_esperada = input_data.get_date().strftime("%d/%m/%Y")
     filial = combo_filial.get()
     nome_filial = filial.split('-',1)[1][1:]
@@ -344,12 +359,14 @@ def criarRequisicao(*args):
     mensagem_titulo['text'] = ('')
     mensagem_numero_req['text'] = ('')
     titulo_progress_bar['text'] = ('')
-
+    
     
     try:
         with sync_playwright() as p:
-
-            progress_bar.place(relx= .10, rely=.72)
+            if combo_categoria.get() == "PEDIDO REGULARIZACAO":
+                progress_bar.place(relx= .10, rely=.79)
+            else:
+                progress_bar.place(relx= .10, rely=.72)
             # valorTotal = str(float(valorun) * int(quant))
             if varcheckNavegador.get():
                 browser = p.chromium.launch(channel="chrome",headless=False)
@@ -360,14 +377,14 @@ def criarRequisicao(*args):
 
             # LOGIN ME
             titulo_progress_bar['text'] = ('Efetuando login no ME')      
-            progress_bar['value'] += 40
+            progress_bar['value'] += 14.28
             page.locator('xpath=//*[@id="LoginName"]').fill(dicioLogin['usuario_me'])
             page.locator('xpath=//*[@id="RAWSenha"]').fill(dicioLogin['senha_me'])
             page.locator('xpath=//*[@id="SubmitAuth"]').click()
 
             # CONFIGURAÇÃO DA REQUISIÇÃO
             titulo_progress_bar['text'] = ('Configurando a requisição')      
-            progress_bar['value'] += 40
+            progress_bar['value'] += 14.28
             page.locator('xpath=//*[@id="__layout"]/div/main/div/div/div[2]/div/div[1]/section/div/div/div/button').click()
             page.locator('xpath=//*[@id="__layout"]/div/main/div/div/div[2]/div/div[1]/section/div[1]/div[2]/ul/li[1]/a').click()
             page.locator('xpath=//*[@id="__layout"]/div/main/div/div/div[2]/div/div[1]/section/div[1]/div[2]/ul[2]/li[1]/a').click()
@@ -391,7 +408,7 @@ def criarRequisicao(*args):
 
             # SELECIONA ITENS E QUANTIDADES
             titulo_progress_bar['text'] = ('Adicionando itens e quantidades')      
-            progress_bar['value'] += 40
+            progress_bar['value'] += 14.28
             for i in range(len(quant)):
                 page.wait_for_timeout(1000)
                 page.locator('xpath=//*[@id="Valor"]').fill(item[i])
@@ -408,7 +425,7 @@ def criarRequisicao(*args):
 
             # TELA CONDIÇÕES GERAIS
             titulo_progress_bar['text'] = ('Ajustando condições gerais')      
-            progress_bar['value'] += 40
+            progress_bar['value'] += 14.28
             page.locator('xpath=//*[@id="Titulo_Value"]').fill(titulo_requisicao)
             page.locator('xpath=//*[@id="DataEsperada_Value"]').fill(data_esperada)
             page.wait_for_timeout(500)
@@ -426,8 +443,10 @@ def criarRequisicao(*args):
             
             #            TELA DETALHES DOS ITENS
             titulo_progress_bar['text'] = ('Ajustando detalhes dos itens')      
-            progress_bar['value'] += 40
+            progress_bar['value'] += 14.28
+
             for i in range(len(quant)):
+                valorun[i] = valorun[i].replace(',','.')
                 valorTotal = str(float(valorun[i]) * int(quant[i]))
                 page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').fill(valorun[i].replace(".",","))
                 page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').click()
@@ -443,8 +462,10 @@ def criarRequisicao(*args):
 
 
             # FINALIZAR REQUISIÇÃO
-            titulo_progress_bar['text'] = ('Finalizando a requisição')      
-            progress_bar['value'] += 40
+            titulo_progress_bar['text'] = ('Finalizando a requisição')    
+             
+            progress_bar['value'] += 14.28
+            
             if cat_Pedido == 'PEDIDO REGULARIZACAO':
                 with page.expect_popup() as popup_info:
                     page.locator('xpath=//*[@id="anexoReq_link"]').click()
@@ -458,19 +479,29 @@ def criarRequisicao(*args):
             page.locator('xpath=//*[@id="btnAvancar"]').click()
             requisicao = page.locator('.badge-code ')
             page.wait_for_timeout(1000)
-            progress_bar['value'] += 40
-            titulo_progress_bar['text'] = ('########### REQUISIÇÃO FINALIZADA ###########')
-            caixa_numero_req.place(relx= .64, rely=.825)
-            caixa_numero_req['text']('Sua requisição é: ')
-            mensagem_titulo.place(relx= .35, rely=.77)
-            mensagem_titulo['text'](titulo_requisicao)
-            mensagem_numero_req.place(relx= .02, rely=.82)
-            mensagem_numero_req.insert(INSERT, requisicao.inner_html().strip()[4:])
+            progress_bar['value'] += 14.3
+
             if cat_Pedido == 'PEDIDO REGULARIZACAO':
-                aba_ativa[ultimaLinha] = requisicao
-    
+                aba_ativa[ultimaLinha] = requisicao.inner_html().strip()[4:]
+
+            if combo_categoria.get() == "PEDIDO REGULARIZACAO":
+                caixa_numero_req.place(relx= .60, rely=.925)
+                mensagem_titulo.place(relx= .1, rely=.85)
+                mensagem_numero_req.place(relx= .1, rely=.92)
+                
+            else:
+                caixa_numero_req.place(relx= .64, rely=.825)
+                mensagem_titulo.place(relx= .1, rely=.77)
+                mensagem_numero_req.place(relx= .1, rely=.82)
+
+            titulo_progress_bar['text'] = ('######## REQUISIÇÃO FINALIZADA ########')
+            caixa_numero_req.insert(INSERT, requisicao.inner_html().strip()[4:])
+            mensagem_titulo['text'] = (titulo_requisicao)
+            mensagem_numero_req['text'] = ('Sua requisição é: ')
+            aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)] = date.today().strftime('%d/%m/%Y')
+
     except TimeoutError:
-        toaster.show_toast(f'Erro ao criar a requisição.',f'Lentidão no mercado eletronico!\n Tente novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
+        toaster.show_toast(f'Erro ao criar a requisição.',f'Lentidão no mercado eletronico!\nTente novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
       
 def salvarArquivo(nome_arquivo):
 
@@ -727,9 +758,13 @@ def threading():
 
     if varmonitorReq.get() is True:
         toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
-    if varmonitorReq.get() is False:
-        
+    else:
         toaster.show_toast(f'Monitoramento desativado!',f'Você desativou o monitoramento de requisições.',icon_path=None, duration=8, threaded=True)
+
+def fechar():
+    varmonitorReq = False
+    janela.quit()
+    janela.destroy()
 
 varcheckNavegador = BooleanVar()
 varmonitorReq = BooleanVar()
@@ -740,9 +775,9 @@ checkNavegador.place(relx=.02, rely=.02)
 monitorReq = Checkbutton(janela, text='Monitor',variable=varmonitorReq, onvalue=True, offvalue=False, command=threading)
 monitorReq.place(relx=.78, rely=.02)
 monitorReq.select()
-if varmonitorReq.get() is True:
+if varmonitorReq:
     toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
-    Thread(target=monitorME).start()
+    threading()
 
 titulo_requisicao = Label(janela, text='Titulo da requisição', font='calibri, 10')
 titulo_requisicao.place(relx=.35, rely=.02)
@@ -806,25 +841,28 @@ comentario_requisicao.place(relx=.41, rely=.5)
 input_comentario = Entry(janela, text='comentario', width=40)
 input_comentario.place(relx=.15, rely=.54)
 
-botaoCriar = Button(janela, text='Criar', command=criarRequisicao, width=15, font='calibri, 10')
+botaoCriar = Button(janela, text='Criar', command=lambda: Thread(target=criarRequisicao).start(), width=15, font='calibri, 10')
 botaoCriar.place(relx=.02, rely=.60)
-botaoCancelar = Button(janela, text='Cancelar',  width=15, font='calibri, 10', command=janela.destroy)
+botaoCancelar = Button(janela, text='Cancelar',  width=15, font='calibri, 10', command=fechar)
 botaoCancelar.place(relx=.42, rely=.60)
 botaoLimpar = Button(janela, text='Limpar', width=5, font='calibri, 10', command=limpar)
 botaoLimpar.place(relx=.83, rely=.60)
 
 titulo_progress_bar = Label(janela, text="", font='calibri, 10')
-titulo_progress_bar.place(relx= .34, rely=.68)
+titulo_progress_bar.place(relx= .1, rely=.68)
 progress_bar = Progressbar(janela, orient= 'horizontal', mode='determinate', length=280)
 
-mensagem_titulo = Label(janela, text="", font='calibri, 12')
-mensagem_titulo.place(relx= .27, rely=.77)
+
+mensagem_titulo = Label(janela, text="", font='calibri, 11')
+mensagem_titulo.place(relx= .15, rely=.77)
 mensagem_numero_req = Label(janela, text="", font='calibri, 11')
-mensagem_numero_req.place(relx= .15, rely=.82)
+mensagem_numero_req.place(relx= .15, rely=.84)
 caixa_numero_req = Text(janela, font='calibri, 10', width=15, height= 1)
 
 
-janela.protocol("WM_DELETE_WINDOW", janela.destroy)
+
+janela.protocol("WM_DELETE_WINDOW", fechar)
 janela.config(menu=menubar)
 
 janela.mainloop()
+varmonitorReq = False
