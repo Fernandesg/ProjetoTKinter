@@ -1,7 +1,7 @@
 from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
-from tkinter import *
-from mttkinter import mtTkinter
+# from tkinter import *
+from mttkinter import mtTkinter as tk
 from tkcalendar import DateEntry 
 from time import sleep
 from playwright.sync_api import sync_playwright, TimeoutError
@@ -14,21 +14,13 @@ from win10toast_click import ToastNotifier
 from threading import *
 
 dicioLogin = {}
-passwords2 = open('testeCredencial.txt', 'r')
+passwords2 = open('credenciais.txt', 'r')
 for linha in passwords2:
     (x,y) = linha.split('=')
     x = x.strip()
     y= y.strip()
     dicioLogin[x]=y
-
-login = []
-passwords = open('credenciais.txt', 'r')
-for linhas in passwords:
-    linhas = linhas.strip()
-    login.append(linhas)
-usuario_me = login[0][14:-1]
-senha_me = login[1][12:-1]
-site = login[2][8:-1]
+dicioLogin['site']
 
 filiais_caminho = open('filiais.txt', 'r', encoding="UTF-8")
 filiais = []
@@ -68,12 +60,21 @@ for linhas in categorias_caminho:
     if linhas != '':
         categorias.append(linhas)
 
-janela = Tk()
+dicioConfig = {}
+with open('configExcel.txt', 'r', encoding='ISO-8859-1') as configexcel:
+    for item in configexcel:
+        x,y = item.split(';')
+        dicioConfig[x]=y.strip()
+
+nomeplanilha = dicioConfig['NOMEARQUIVO'].split('/')[-1]
+nomeplanilhaSemext=nomeplanilha.split('.')
+
+janela = tk.Tk()
 janela.title('Abertura de requisições')
 janela.geometry('350x600')
 
-menubar = Menu(janela)
-arquivomenu = Menu(menubar, tearoff=0)
+menubar = tk.Menu(janela)
+arquivomenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Arquivos", menu=arquivomenu)
 arquivomenu.add_command(label='Itens', command=lambda: abreArquivo('codigos.txt'))
 arquivomenu.add_command(label='Categorias', command=lambda: abreArquivo('categorias.txt'))
@@ -81,100 +82,141 @@ arquivomenu.add_command(label='Centro de custos', command=lambda: abreArquivo('c
 arquivomenu.add_command(label='Tipo requisição', command=lambda: abreArquivo('TipoRequisicao.txt'))
 arquivomenu.add_command(label='Filiais', command=lambda: abreArquivo('filiais.txt'))
 arquivomenu.add_separator()
-arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('testeCredencial.txt'))
+arquivomenu.add_command(label='Credenciais ME', command=lambda: abreArquivo('credenciais.txt'))
 
-configmenu = Menu(menubar, tearoff=0)
+configmenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Configurações", menu=configmenu)
 configmenu.add_command(label='Configurar monitor', command=lambda: configMonitor())
 
 toaster = ToastNotifier()
 codLista = []
-tabela = load_workbook('notas.xlsm', data_only=True)
-aba_ativa = tabela['REQUISIÇÕES PENDENTES']
-ultimaLinha = 'B' + str(len(aba_ativa['B'])+1)
+tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
+aba_ativa = tabela[dicioConfig['NOMEABA']]
+ultimaLinha = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
 filenames = ''
 
 def configMonitor():
-    janelaConfig = Toplevel(janela)
+    global EntryNF 
+    global entryRequisicao
+    global entryDataAbertura 
+    global entryCNPJ 
+    global entryNumPrePedido
+    global entryDataPrePedido 
+    global entryPedido 
+    global entryStatus 
+    global entryNomeAba 
+    global janelaConfig
+    global entryNomeArquivo
+
+    janelaConfig = tk.Toplevel(janela)
     janelaConfig.title(f'Editar configurações')
     janelaConfig.geometry('400x300')
+
+    EntryNF = tk.StringVar()
+    entryRequisicao = tk.StringVar()
+    entryDataAbertura = tk.StringVar()
+    entryCNPJ = tk.StringVar()
+    entryNumPrePedido = tk.StringVar()
+    entryDataPrePedido = tk.StringVar()
+    entryPedido = tk.StringVar()
+    entryStatus = tk.StringVar()
+    entryNomeAba = tk.StringVar()
+    entryNomeArquivo = tk.StringVar()
 
     labelTitulo = Label(janelaConfig,text='Inserir as letras das colunas no Excel!', font='calibri 11')
     labelTitulo.place(relx=.03, rely=.05)
 
     labelEntryNF = Label(janelaConfig,text='NF', font='calibri 10')
     labelEntryNF.place(relx=.03, rely=.2)
-    entryNF = Entry(janelaConfig, width=10)
+    entryNF = Entry(janelaConfig, width=10, textvariable=EntryNF)
+    entryNF.insert(0,dicioConfig['NF'])
     entryNF.place(relx=.03, rely = .3)
 
     labelentryRequisicao = Label(janelaConfig,text='Requisição', font='calibri 10')
     labelentryRequisicao.place(relx=.26, rely=.2)
-    entryRequisicao = Entry(janelaConfig, width=10)
+    entryRequisicao = Entry(janelaConfig, width=10, textvariable=entryRequisicao)
+    entryRequisicao.insert(0,dicioConfig['REQUISICAO'])
     entryRequisicao.place(relx=.26, rely = .3)
 
     labelentryDataAbertura = Label(janelaConfig,text='Data de abertura', font='calibri 10')
     labelentryDataAbertura.place(relx=.5, rely=.2)
-    entryDataAbertura = Entry(janelaConfig, width=10)
+    entryDataAbertura = Entry(janelaConfig, width=10, textvariable=entryDataAbertura)
+    entryDataAbertura.insert(0,dicioConfig['DATAABERTURA'])
     entryDataAbertura.place(relx=.5, rely = .3)
 
     labelentryCNPJ = Label(janelaConfig,text='CNPJ fornecedor', font='calibri 10')
     labelentryCNPJ.place(relx=.75, rely=.2)
-    entryCNPJ = Entry(janelaConfig, width=10)
+    entryCNPJ = Entry(janelaConfig, width=10, textvariable=entryCNPJ)
+    entryCNPJ.insert(0,dicioConfig['CNPJ'])
     entryCNPJ.place(relx=0.75, rely = .3)
 
     labelentryNumPrePedido = Label(janelaConfig,text='Nº pedido', font='calibri 10')
     labelentryNumPrePedido.place(relx=.03, rely=.4)
-    entryNumPrePedido = Entry(janelaConfig, width=10)
+    entryNumPrePedido = Entry(janelaConfig, width=10, textvariable=entryNumPrePedido)
+    entryNumPrePedido.insert(0,dicioConfig['NUMPREPEDIDO'])
     entryNumPrePedido.place(relx=0.03, rely = .5)
 
     labelentryDataPrePedido = Label(janelaConfig,text='Data Pré-Pedido', font='calibri 10')
     labelentryDataPrePedido.place(relx=.26, rely=.4)
-    entryDataPrePedido = Entry(janelaConfig, width=10)
+    entryDataPrePedido = Entry(janelaConfig, width=10, textvariable=entryDataPrePedido)
+    entryDataPrePedido.insert(0,dicioConfig['DATAPREPEDIDO'])
     entryDataPrePedido.place(relx=.26, rely = .5)
 
     labelentryPedido = Label(janelaConfig,text='Nº Pedido', font='calibri 10')
     labelentryPedido.place(relx=.5, rely=.4)
-    entryPedido = Entry(janelaConfig, width=10)
+    entryPedido = Entry(janelaConfig, width=10, textvariable=entryPedido)
+    entryPedido.insert(0,dicioConfig['PEDIDO'])
     entryPedido.place(relx=0.5, rely = .5)
 
     labelentryStatus = Label(janelaConfig,text='Status', font='calibri 10')
     labelentryStatus.place(relx=.75, rely=.4)
-    entryStatus = Entry(janelaConfig, width=10)
+    entryStatus = Entry(janelaConfig, width=10, textvariable=entryStatus)
+    entryStatus.insert(0,dicioConfig['STATUS'])
     entryStatus.place(relx=.75, rely = .5)
     
     labelentryNomeAba = Label(janelaConfig,text='Nome da aba', font='calibri 10')
     labelentryNomeAba.place(relx=.03, rely=.6)
-    entryNomeAba = Entry(janelaConfig, width=30)
+    entryNomeAba = Entry(janelaConfig, width=25, textvariable=entryNomeAba)
+    entryNomeAba.insert(0,dicioConfig['NOMEABA'])
     entryNomeAba.place(relx=.03, rely = .7)
 
-    botaoSalvar = Button(janelaConfig,text='Salvar', font='calibri 11', width=8)
+    labelentryNomeArquivo = Label(janelaConfig,text='Local do arquivo', font='calibri 10')
+    labelentryNomeArquivo.place(relx=.5, rely=.6)
+    entryNomeArquivo = Entry(janelaConfig, width=20, textvariable=entryNomeArquivo)
+    entryNomeArquivo.insert(0,dicioConfig['NOMEARQUIVO'])
+    entryNomeArquivo.place(relx=.5, rely = .7)
+    botaoProcuraArquivo = Button(janelaConfig, text='Procurar', command=lambda: procurarArquivos('configExcel'), width=6, font='calibri, 10')
+    botaoProcuraArquivo.place(relx=.82, rely=.68)
+
+    botaoSalvar = Button(janelaConfig,text='Salvar', font='calibri 11', width=8, command=lambda: salvarArquivo('configExcel.txt'))
     botaoSalvar.place(relx=.03, rely=.8)
-    entryNomeAba = Button(janelaConfig,text='Cancelar', font='calibri 11' ,width=8)
-    entryNomeAba.place(relx=.75, rely = .8)
+    botaoCancelar = Button(janelaConfig,text='Cancelar', font='calibri 11' ,width=8, command=janelaConfig.destroy)
+    botaoCancelar.place(relx=.75, rely = .8)
 
 def monitorME():
     while True:
-        sleep(300)
-        print('Monitor executado')
+        sleep(30)
+
         if varmonitorReq.get() is True: 
             try:
                 with sync_playwright() as p:
-                    browser = p.chromium.launch(channel="chrome", headless=False)
+                    browser = p.chromium.launch(channel="chrome")
                     page = browser.new_page()
-                    page.goto(site)
+                    page.goto(dicioLogin['site'])
 
                     # LOGIN ME
-                    page.locator('xpath=//*[@id="LoginName"]').fill(usuario_me)
-                    page.locator('xpath=//*[@id="RAWSenha"]').fill(senha_me)
+                    page.locator('xpath=//*[@id="LoginName"]').fill(dicioLogin['usuario_me'])
+                    page.locator('xpath=//*[@id="RAWSenha"]').fill(dicioLogin['senha_me'])
                     page.locator('xpath=//*[@id="SubmitAuth"]').click()
                     page.wait_for_timeout(1)
 
                     # ANALISA STATUS DA REQUISIÇÃO E ATUALIZA PLANILHA
-                    for celula in aba_ativa['I']:
+                    for celula in aba_ativa[dicioConfig['STATUS']]:
                         linha = celula.row
-                        if celula.value == 'Pendente' and aba_ativa[f'E{linha}'].value == None:
-                            cnpj = aba_ativa[f'D{linha}'].value
-                            reqPendente = aba_ativa[f'B{linha}'].value
+
+                        if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value == None:
+                            cnpj = aba_ativa[dicioConfig['CNPJ'] + str(linha)].value
+                            reqPendente = aba_ativa[dicioConfig['REQUISICAO']+str(linha)].value
                             page.goto(f'https://www.me.com.br/DO/Request/Home.mvc/Show/{reqPendente}')
                             statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
                             filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
@@ -202,26 +244,32 @@ def monitorME():
                                 page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]/a').click()
                                 numPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p').inner_html().strip()
                                 statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()
-                                aba_ativa[f'F{linha}'] = date.today().strftime('%d/%m/%Y')
-                                aba_ativa[f'E{linha}'] = numPrePedido
+                                aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = date.today().strftime('%d/%m/%Y')
+                                aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedido
                             
-                        if celula.value == 'Pendente' and aba_ativa[f'E{linha}'].value != None:
+                        if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)].value != None:
                             
-                            prePedidoPendente = aba_ativa[f'E{linha}'].value
+                            prePedidoPendente = aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value
                             page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
                             statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()[:8]
                             if statusPrePedido == 'APROVADO':
                                 numPedidoSAP = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p[1]').inner_html().strip()
-                                aba_ativa[f'G{linha}'] = numPedidoSAP
-                                toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP} \nclique para abrir no navegador!',icon_path=None, duration=10, threaded=True,
+                                aba_ativa[dicioConfig['PEDIDO']+str(linha)] = numPedidoSAP
+                                toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP} \nClique para abrir no navegador!',icon_path=None, duration=8, threaded=True,
                                 callback_on_click=lambda: webbrowser.open(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home'))
-                tabela.save('Tabelateste.xlsx')
+                sleep(15)
+                try:
+                    tabela.save('Tabelateste.xlsx')
+                except PermissionError:
 
+                    toaster.show_toast(f'Erro ao salvar a planilha!',f'Provavelmente a planilha {nomeplanilha} está aberta no computador \nSalvando uma planilha temporaria no local!',icon_path=None, duration=10, threaded=True)
+                    tabela.save(f'{nomeplanilhaSemext[0]}Temp.{nomeplanilhaSemext[1]}')
+                    
             except TimeoutError:
                 toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \n Lentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path=None, duration=20, threaded=True)    
                 
-                tabela.save('Tabelateste.xlsx')
         else:
+            
             break        
 
 def limpar():
@@ -245,14 +293,17 @@ def limpar():
     titulo_progress_bar['text'] = ('')
     habilitaProcurar()
     
-def procurarArquivos():
+def procurarArquivos(janela):
     filenames = askopenfilenames(
         title='Procurar arquivos',
     )
-    input_arquivo.insert(INSERT, filenames)
-
+    if janela == 'configExcel':
+        entryNomeArquivo.delete(0, "end")
+        entryNomeArquivo.insert(tk.INSERT, filenames[0])
+    else:
+        input_arquivo.insert(tk.INSERT, filenames[0])
+    
 def habilitaProcurar(*args):
-    print(combo_categoria.get())
     if combo_categoria.get() == "PEDIDO REGULARIZACAO":
         arquivo_requisicao.place(relx=.33, rely=.5)
         input_arquivo.place(relx=.02, rely=.54)
@@ -262,7 +313,6 @@ def habilitaProcurar(*args):
         botaoCriar.place(relx=.02, rely=.69)
         botaoCancelar.place(relx=.42, rely=.69)
         botaoLimpar.place(relx=.83, rely=.69)
-        print(combo_categoria.get())
     else:
         arquivo_requisicao.place_forget()
         input_arquivo.place_forget()
@@ -308,13 +358,13 @@ def criarRequisicao(*args):
             else:
                 browser = p.chromium.launch(channel="chrome")
             page = browser.new_page()
-            page.goto(site)
+            page.goto(dicioLogin['site'])
 
             # LOGIN ME
             titulo_progress_bar['text'] = ('Efetuando login no ME')      
             progress_bar['value'] += 40
-            page.locator('xpath=//*[@id="LoginName"]').fill(usuario_me)
-            page.locator('xpath=//*[@id="RAWSenha"]').fill(senha_me)
+            page.locator('xpath=//*[@id="LoginName"]').fill(dicioLogin['usuario_me'])
+            page.locator('xpath=//*[@id="RAWSenha"]').fill(dicioLogin['senha_me'])
             page.locator('xpath=//*[@id="SubmitAuth"]').click()
 
             # CONFIGURAÇÃO DA REQUISIÇÃO
@@ -417,7 +467,7 @@ def criarRequisicao(*args):
             mensagem_titulo.place(relx= .35, rely=.77)
             mensagem_titulo['text'](titulo_requisicao)
             mensagem_numero_req.place(relx= .02, rely=.82)
-            mensagem_numero_req.insert(INSERT, requisicao.inner_html().strip()[4:])
+            mensagem_numero_req.insert(tk.INSERT, requisicao.inner_html().strip()[4:])
             if cat_Pedido == 'PEDIDO REGULARIZACAO':
                 aba_ativa[ultimaLinha] = requisicao
     
@@ -426,47 +476,66 @@ def criarRequisicao(*args):
       
 def salvarArquivo(nome_arquivo):
 
-    if nome_arquivo == 'testeCredencial.txt':
+    if nome_arquivo == 'credenciais.txt':
         with open(nome_arquivo, 'w') as credenciais:
             credencial=f"usuario_me={credencialUser.get()}\nsenha_me={credencialSenha.get()}\nsite={credencialSite.get()}"
             credenciais.write(credencial)
+        janelaArquivos.destroy()
 
     elif nome_arquivo == 'filiais.txt':
         with open(nome_arquivo, 'w') as filiais:
             conteudo = list(listbox.get(0,"end"))
             for item in conteudo:
                 filiais.write(item+'\n')
-            
+        janelaArquivos.destroy()
+
     elif nome_arquivo == 'codigos.txt':
         with open(nome_arquivo, 'w') as codigos:
             conteudo = list(listbox.get(0,"end"))
             for item in conteudo:
                 codigos.write(item+'\n')
+        janelaArquivos.destroy()
 
     elif nome_arquivo == 'categorias.txt':
         with open(nome_arquivo, 'w') as categorias:
             conteudo = list(listbox.get(0,"end"))
             for item in conteudo:
                 categorias.write(item+'\n')
+        janelaArquivos.destroy()
 
     elif nome_arquivo == 'centrocustos.txt':
         with open(nome_arquivo, 'w') as categorias:
             conteudo = list(listbox.get(0,"end"))
             for item in conteudo:
                 categorias.write(item+'\n')
-   
+        janelaArquivos.destroy()
+
     elif nome_arquivo == 'TipoRequisicao.txt':
         with open(nome_arquivo, 'w') as tiporeq:
 
             for k, v in dicioTipo.items():
                 tiporeq.write(k+';'+v+'\n')
-            
-    janelaArquivos.destroy()
+        janelaArquivos.destroy()
 
+    elif nome_arquivo == 'configExcel.txt':
+        with open(nome_arquivo, 'w') as configE:
+            dicioConfig['NF'] = EntryNF.get().upper()
+            dicioConfig['REQUISICAO'] =  entryRequisicao.get().upper()
+            dicioConfig['DATAABERTURA'] =  entryDataAbertura.get().upper()
+            dicioConfig['CNPJ'] =  entryCNPJ.get().upper()
+            dicioConfig['NUMPREPEDIDO'] =  entryNumPrePedido.get().upper()
+            dicioConfig['DATAPREPEDIDO'] =  entryDataPrePedido.get().upper()
+            dicioConfig['PEDIDO'] =  entryPedido.get().upper()
+            dicioConfig['STATUS'] =  entryStatus.get().upper()
+            dicioConfig['NOMEABA'] =  entryNomeAba.get().upper()
+            dicioConfig['NOMEARQUIVO'] =  entryNomeArquivo.get()
+            for k, v in dicioConfig.items():
+                configE.write(k+';'+v+'\n')
+        janelaConfig.destroy()
+   
 def addListBox(nome_arquivo):
     if nome_arquivo == 'TipoRequisicao.txt':
         dicioTipo[caixa_adicionar.get()] = caixa_item.get()
-        print(dicioTipo)
         listbox.insert("end", caixa_adicionar.get())
     
     else:
@@ -489,20 +558,20 @@ def abreArquivo(nome_arquivo):
     global caixa_item
     global caixa_adicionar
 
-    credencialUser = StringVar()
-    credencialSite = StringVar()
-    credencialSenha = StringVar()
-    caixa_item = StringVar()
+    credencialUser = tk.StringVar()
+    credencialSite = tk.StringVar()
+    credencialSenha = tk.StringVar()
+    caixa_item = tk.StringVar()
 
     #Cria segunda janela
     titulo = nome_arquivo.split('.')[0]
-    janelaArquivos = Toplevel(janela)
+    janelaArquivos = tk.Toplevel(janela)
     janelaArquivos.title(f'Editar informações de {titulo}')
     mensagem = Label(janelaArquivos, text='', font='calibri 11')
     mensagemTitulo = Label(janelaArquivos, text='', font='calibri 11')
     labelSelecaoTitulo = Label(janelaArquivos, text='', font='calibri 11')
     labelSelecao = Label(janelaArquivos, text='', font='calibri 11')
-    listbox = Listbox(janelaArquivos, height=13, width=30)
+    listbox = tk.Listbox(janelaArquivos, height=13, width=30)
     caixa_item = Entry(janelaArquivos, textvariable=caixa_item)
     caixa_adicionar = Entry(janelaArquivos, textvariable=credencialUser, width=43)
     
@@ -523,7 +592,7 @@ def abreArquivo(nome_arquivo):
     arquivo = open(nome_arquivo, "r", encoding="ISO-8859-1")
     conteudo = arquivo.read().strip()
 
-    if nome_arquivo == 'testeCredencial.txt':
+    if nome_arquivo == 'credenciais.txt':
         janelaArquivos.geometry('400x200')
         mensagem.configure(text='Adicionar informações de login!')
         mensagem.place(relx=.28, rely=0.02)
@@ -533,9 +602,9 @@ def abreArquivo(nome_arquivo):
         credencialUser.place(relx=.48, rely=0.15)  
         credencialSenha.place(relx=.48, rely=0.30)         
         credencialSite.place(relx=.48, rely=0.45)         
-        credencialUser.insert(END, dicioLogin['usuario_me'])
-        credencialSenha.insert(END, dicioLogin['senha_me'])
-        credencialSite.insert(END, dicioLogin['site'])
+        credencialUser.insert(tk.END, dicioLogin['usuario_me'])
+        credencialSenha.insert(tk.END, dicioLogin['senha_me'])
+        credencialSite.insert(tk.END, dicioLogin['site'])
         botao_salvar.place(relx=0.2, rely=0.83)
         botao_cancelar.place(relx=0.55, rely=0.83)
     
@@ -553,7 +622,7 @@ def abreArquivo(nome_arquivo):
         labelSelecao.place(relx=0.43, rely=0.4)
         labelSelecao.configure(text='')
 
-        var = Variable(value=conteudo.split('\n'))
+        var = tk.Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -576,7 +645,7 @@ def abreArquivo(nome_arquivo):
         labelSelecao.place(relx=0.43, rely=0.4)
         labelSelecao.configure(text='')
 
-        var = Variable(value=conteudo.split('\n'))
+        var = tk.Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -600,7 +669,7 @@ def abreArquivo(nome_arquivo):
         labelSelecao.place(relx=0.47, rely=0.4)
         labelSelecao.configure(text='')
 
-        var = Variable(value=conteudo.split('\n'))
+        var = tk.Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -615,7 +684,7 @@ def abreArquivo(nome_arquivo):
         labelSelecaoTitulo.configure(text='Item selecionado: ')
         labelSelecao.place(relx=0.5, rely=0.43)
         labelSelecao.configure(text='')
-        var = Variable(value=conteudo.split('\n'))
+        var = tk.Variable(value=conteudo.split('\n'))
         listbox.configure(listvariable=var, width=20)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=listbox.get(listbox.curselection())))
@@ -645,7 +714,7 @@ def abreArquivo(nome_arquivo):
         labelSelecaoTitulo.configure(text='Descrição selecionada: ')
         labelSelecao.place(relx=0.43, rely=0.4)
         labelSelecao.configure(text='')
-        var = Variable(value=list(dicioTipo.keys()))
+        var = tk.Variable(value=list(dicioTipo.keys()))
         listbox.configure(listvariable=var)
         listbox.place(relx=.05, rely=0.15) 
         listbox.bind('<<ListboxSelect>>', lambda e: labelSelecao.configure(text=dicioTipo[listbox.get(listbox.curselection())].strip() + " - " + listbox.get(listbox.curselection())))
@@ -653,21 +722,26 @@ def abreArquivo(nome_arquivo):
         botao_salvar.place(relx=0.1, rely=0.89)
         botao_cancelar.place(relx=0.77, rely=0.89)
         botao_remover.place(relx=0.77, rely=0.48)
-        print(dicioTipo)
 
 def threading():
     Thread(target=monitorME).start()
+    if varmonitorReq.get() is True:
+        toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
+    if varmonitorReq.get() is False:
+        
+        toaster.show_toast(f'Monitoramento desativado!',f'Você desativou o monitoramento de requisições.',icon_path=None, duration=8, threaded=True)
 
-varcheckNavegador = BooleanVar()
-varmonitorReq = BooleanVar()
+varcheckNavegador = tk.BooleanVar()
+varmonitorReq = tk.BooleanVar()
 
 checkNavegador = Checkbutton(janela, text='Abre Nav',variable=varcheckNavegador, offvalue=False, onvalue=True)
 checkNavegador.place(relx=.02, rely=.02)
 
 monitorReq = Checkbutton(janela, text='Monitor',variable=varmonitorReq, onvalue=True, offvalue=False, command=threading)
 monitorReq.place(relx=.78, rely=.02)
-# monitorReq.select()
+monitorReq.select()
 if varmonitorReq.get() is True:
+    toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
     Thread(target=monitorME).start()
 
 titulo_requisicao = Label(janela, text='Titulo da requisição', font='calibri, 10')
@@ -724,8 +798,8 @@ combo_filial['values']=(filiais)
 combo_filial.place(relx=.02, rely=.45)
 
 arquivo_requisicao = Label(janela, text='Selecionar arquivos:', font='calibri, 10')
-input_arquivo = Text(janela, width=28, height=1)
-botaoProcuraArquivo = Button(janela, text='Procurar', command=procurarArquivos, width=10, font='calibri, 10')
+input_arquivo = tk.Text(janela, width=28, height=1)
+botaoProcuraArquivo = Button(janela, text='Procurar', command=lambda: procurarArquivos('PEDIDOREGULARIZACAO'), width=10, font='calibri, 10')
 
 comentario_requisicao = Label(janela, text='Comentario:', font='calibri, 10')
 comentario_requisicao.place(relx=.41, rely=.5)
@@ -747,7 +821,7 @@ mensagem_titulo = Label(janela, text="", font='calibri, 12')
 mensagem_titulo.place(relx= .27, rely=.77)
 mensagem_numero_req = Label(janela, text="", font='calibri, 11')
 mensagem_numero_req.place(relx= .15, rely=.82)
-caixa_numero_req = Text(janela, font='calibri, 10', width=15, height= 1)
+caixa_numero_req = tk.Text(janela, font='calibri, 10', width=15, height= 1)
 
 
 janela.protocol("WM_DELETE_WINDOW", janela.destroy)
