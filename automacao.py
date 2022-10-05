@@ -1,17 +1,18 @@
 from tkinter.filedialog import askopenfilenames
 from tkinter.ttk import *
 from tkinter import *
-from numpy import place
+from numpy import inner, place
 from tkcalendar import DateEntry 
 from mttkinter import mtTkinter
 from time import sleep
 from playwright.sync_api import sync_playwright, TimeoutError
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import smtplib
 from openpyxl import Workbook, load_workbook
 import webbrowser
 from win10toast_click import ToastNotifier 
 from threading import *
+import pprint
 
 dicioLogin = {}
 passwords2 = open('credenciais.txt', 'r')
@@ -221,9 +222,12 @@ def monitorME():
                             tituloreq = page.locator('//*[@id="formRequest"]/div/div[2]/div[1]/p[1]').inner_html().strip()
                             statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
                             filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
-                            print(reqPendente)
-                            print(statusRequisicao)
-                            if statusRequisicao == 'APROVADO':
+                            statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]').inner_html().strip()
+                            print(statusGeral)
+                            statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]').inner_text().split(': ')
+                            
+                            print(statusGeral)
+                            if statusRequisicao == 'APROVADO' and statusGeral == 'Em Pendência de Compra':
                             #CRIAR PRE-PEDIDO
                                 toaster.show_toast(f'Requisição aprovada!',f'Requisição {reqPendente} aprovada! \n Criando pré-pedido',icon_path=None, duration=10, threaded=True)
                                 page.locator('xpath=//*[@id="btnEmergency"]').click()
@@ -235,14 +239,27 @@ def monitorME():
                                 page.locator('xpath=//*[@id="btnSalvarSelecao"]').click()
                                 page.locator('xpath=//*[@id="btnVoltarPrePedEmergencial"]').click()
                                 page.locator('xpath=//*[@id="Resumo"]').fill(tituloreq)
-                                page.locator('//*[@id="DataEntrega"]').fill(input_data.get_date().strftime("%d/%m/%Y"))
+                                
+                                dataesperada = page.locator('xpath=/html/body/main/form[2]/table[1]/tbody/tr[5]/td').inner_html()
+                                print(dataesperada)
+                                print(date.today().strftime('%d/%m/%Y'))
+                                if dataesperada < date.today().strftime('%d/%m/%Y'):
+                                    datamais1 = timedelta(1)+date.today()
+                                    page.locator('//*[@id="DataEntrega"]').fill(datamais1.strftime('%d/%m/%Y'))
+                                else: 
+                                    page.locator('//*[@id="DataEntrega"]').fill(dataesperada)
+
                                 filiaisPrePedido = page.locator('//select[@name="LocalCobranca"]').inner_html().split('\n')
-                                print(filiaisPrePedido)
                                 print(filial_requisicao)
-                                print(enumerate(filiaisPrePedido))
-                                indice = [i for i, s in enumerate(filiaisPrePedido) if filial_requisicao in s][0]
+                                print(filiaisPrePedido)
+                                for i in filiaisPrePedido:
+                                    if filial_requisicao in i:
+                                        indice = filiaisPrePedido.index(i)
+                                        break
+
+                                print(indice)
                                 page.locator('//select[@name="LocalCobranca"]').select_option(index=indice-1)
-                                page.locator('xpath=//*[@id="DataEntrega"]').fill(input_titulo.get())
+
                                 page.locator('xpath=//*[@id="MEComponentManager_MEButton_3"]').click()
                                 page.locator('xpath=/html/body/main/form[2]/table[3]/tbody/tr[1]/td/input[1]').click()
                                 page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
@@ -774,10 +791,10 @@ checkNavegador.place(relx=.02, rely=.02)
 
 monitorReq = Checkbutton(janela, text='Monitor',variable=varmonitorReq, onvalue=True, offvalue=False, command=threading)
 monitorReq.place(relx=.78, rely=.02)
-monitorReq.select()
-if varmonitorReq:
-    toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
-    threading()
+# # monitorReq.select()
+# if varmonitorReq:
+#     toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
+#     threading()
 
 titulo_requisicao = Label(janela, text='Titulo da requisição', font='calibri, 10')
 titulo_requisicao.place(relx=.35, rely=.02)
