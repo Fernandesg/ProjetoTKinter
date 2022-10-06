@@ -195,9 +195,8 @@ def configMonitor():
 def monitorME():
     global varmonitorReq
     while True:
-        if varmonitorReq:
+        if varmonitorReq.get():
             sleep(5)
-            print(datetime.now().strftime('%H:%M:%S'))
             try:
                 with sync_playwright() as p:
                     browser = p.chromium.launch(channel="chrome", headless=False)
@@ -209,11 +208,11 @@ def monitorME():
                     page.locator('xpath=//*[@id="RAWSenha"]').fill(dicioLogin['senha_me'])
                     page.locator('xpath=//*[@id="SubmitAuth"]').click()
                     page.wait_for_timeout(1)
-
                     # ANALISA STATUS DA REQUISIÇÃO E ATUALIZA PLANILHA
                     for celula in aba_ativa[dicioConfig['STATUS']]:
                         linha = celula.row
-                        
+                        print(celula.value)
+                        print(linha)
                         if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value == None:
                             cnpj = str(aba_ativa[dicioConfig['CNPJ'] + str(linha)].value)
                             reqPendente = aba_ativa[dicioConfig['REQUISICAO']+str(linha)].value
@@ -224,9 +223,6 @@ def monitorME():
                             statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]').inner_text().strip()
                             statusPrePedidoTemp = statusGeral.split()[1].strip()
                             numPrePedidoTemp = statusGeral.split()[-1].strip()
-                            print(statusGeral)
-                            print(statusPrePedidoTemp)
-                            print(numPrePedidoTemp)
 
                             if statusRequisicao == 'APROVADO' and statusGeral == 'Em Pendência de Compra':
                             #CRIAR PRE-PEDIDO
@@ -272,25 +268,24 @@ def monitorME():
                                 dataaberturatemp = page.locator('xpath=//*[@id="ctl00_conteudo_gridStatus_pnlGridHistoricoV2"]/table/tbody/tr[2]/td[3]').inner_html().split()[0]
                                 aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = dataaberturatemp
                                 aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedidoTemp
-                            elif statusPrePedidoTemp == 'Pedido:':
-                                page.goto(f'https://www.me.com.br/ShowPedido.asp?Pedido={numPrePedidoTemp}')
-                                numPrePedidoTemp = page.locator('xpath=/html/body/main/div/div[2]/div[1]/p[1]').inner_html().strip()
-                                dataaberturatemp = page.locator('xpath=//*[@id="MEComponentManager_MECollapse_2"]/div/div/div[4]/div/div/span').inner_html().split()[0]
-                                print(numPrePedidoTemp)
-                                print(dataaberturatemp)
-                                aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = dataaberturatemp
-                                aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedidoTemp
-                                toaster.show_toast(f'Requisição {reqPendente} já possui pedido aprovado!',f'O número do pedido é {numPrePedidoTemp}. Planilha atualizada e monitorando! \nClique para abrir no navegador!',icon_path=None, duration=8, threaded=True,
-                                callback_on_click=lambda: webbrowser.open(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false&Origin=home'))
+                                continue
 
-                        if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)].value != None:
+                            elif statusPrePedidoTemp == 'Pedido:':
+                                page.goto(f'https://www.me.com.br/ShowPedido.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false')
+                                numPedidoTemp = page.locator('xpath=/html/body/main/div/div[2]/div[1]/p[1]').inner_html().strip()
+                                dataaberturatemp = page.locator('xpath=//*[@id="MEComponentManager_MECollapse_2"]/div/div/div[4]/div/div/span').inner_html().split()[0]
+                                aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedidoTemp
+                                aba_ativa[dicioConfig['PEDIDO'] + str(linha)] = numPedidoTemp
+                                aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = dataaberturatemp
+                                toaster.show_toast(f'Requisição {reqPendente} já possui pedido aprovado!',f'O número do pedido é {numPedidoTemp}. Planilha atualizada e monitorando! \nClique para abrir no navegador!',icon_path=None, duration=8, threaded=True,
+                                callback_on_click=lambda: webbrowser.open(f'https://www.me.com.br/ShowPedido.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false'))
+                                continue
+
+                        if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)].value != None and aba_ativa[dicioConfig['PEDIDO'] + str(linha)].value == None:
                             
                             prePedidoPendente = aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value
                             page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
-                            mensagemErro = page.locator('xpath=/html/body/main/p/big').inner_html().strip()
-                            print(mensagemErro)
-                            if mensagemErro == 'Você não está habilitado para realizar essa operação.':
-                                break
+                            
                             statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()[:8]
                             if statusPrePedido == 'APROVADO':
                                 numPedidoSAP = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p[1]').inner_html().strip()
@@ -807,10 +802,6 @@ checkNavegador.place(relx=.02, rely=.02)
 
 monitorReq = Checkbutton(janela, text='Monitor',variable=varmonitorReq, onvalue=True, offvalue=False, command=threading)
 monitorReq.place(relx=.78, rely=.02)
-# # monitorReq.select()
-# if varmonitorReq:
-#     toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada 5 minutos.',icon_path=None, duration=8, threaded=True)
-#     threading()
 
 titulo_requisicao = Label(janela, text='Titulo da requisição', font='calibri, 10')
 titulo_requisicao.place(relx=.35, rely=.02)
