@@ -9,8 +9,9 @@ from datetime import datetime, date, timedelta
 import smtplib
 from openpyxl import Workbook, load_workbook
 import subprocess
-from win10toast import ToastNotifier
+from win10toast_click import ToastNotifier 
 from threading import *
+import webbrowser
 
 credencialEmail = open('credencialEmail_AUT.txt', 'r')
 loginEmail = []
@@ -78,8 +79,8 @@ with open('configExcel.txt', 'r', encoding='ISO-8859-1') as configexcel:
         dicioConfig[x]=y.strip()
 
 tempoMonitor = int(dicioConfig['TEMPO'])
-nomeplanilha = dicioConfig['NOMEARQUIVO'].split('/')[-1]
-nomeplanilhaSemext=nomeplanilha.split('.')
+nomeplanilha = dicioConfig['NOMEARQUIVO']
+nomeplanilhaSemext=nomeplanilha.split('/')[-1].split('.')[-2]
 
 janela = Tk()
 janela.title('Abertura de requisições')
@@ -213,25 +214,31 @@ def configMonitor():
 def monitorME():
     tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
     aba_ativa = tabela[dicioConfig['NOMEABA']]
-    sleep(15)
     global varmonitorReq
     while True:
 
         quantPendente = 0
-        if varmonitorReq.get():
+        if varmonitorReq.get() == True:
             for celula in aba_ativa[dicioConfig['PEDIDO']]:
                 linha = celula.row
              
                 if celula.value == None and aba_ativa[dicioConfig['STATUS']+str(linha)].value == 'Pendente':
                     quantPendente += 1
-            
-            toaster.show_toast(f'Você possui {quantPendente} requisições pendentes!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
+            tempoMonitor = int(dicioConfig['TEMPO'])
+
             
             if quantPendente > 0:
-                
+                sleep(20)
+                toaster.show_toast(f'Você possui {quantPendente} requisições pendentes!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
+                print(datetime.now())
+                sleep(int(dicioConfig['TEMPO'])*40)
+                print(datetime.now())
                 try:
                     with sync_playwright() as p:
-                        browser = p.chromium.launch(channel="chrome")
+                        if varcheckNavegador.get():
+                            browser = p.chromium.launch(channel="chrome",headless=False)
+                        else:
+                            browser = p.chromium.launch(channel="chrome")
                         page = browser.new_page()
                         page.goto(dicioLogin['site'])
 
@@ -244,6 +251,7 @@ def monitorME():
                         # ANALISA STATUS DA REQUISIÇÃO E ATUALIZA PLANILHA
                         for celula in aba_ativa[dicioConfig['STATUS']]:
                             linha = celula.row
+                            sleep(10)
                             if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value == None:
                                 cnpj = str(aba_ativa[dicioConfig['CNPJ'] + str(linha)].value)
                                 reqPendente = aba_ativa[dicioConfig['REQUISICAO']+str(linha)].value
@@ -251,6 +259,10 @@ def monitorME():
                                 tituloreq = page.locator('//*[@id="formRequest"]/div/div[2]/div[1]/p[1]').inner_html().strip()
                                 statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
                                 filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
+                                dataprepedidoTemp = page.locator('//*[@id="txt_Preferences_DataColocacao_Value"]').inner_text().split(' ')[0].strip()
+
+                                if aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)].value == None:
+                                    aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)] = dataprepedidoTemp
                                 try:
                                     statusGeral = page.locator('.icon-status-item-stagethree+ b').inner_text().strip()  
                                 except:
@@ -293,52 +305,57 @@ def monitorME():
                                     numPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p').inner_html().strip()
                                     statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()
                                     aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = date.today().strftime('%d/%m/%Y')
-                                    aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedido
-                                    sleep(5)
+                                    aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = int(numPrePedido)
+                                    
 
                                 elif statusPrePedidoTemp == 'Pré-Pedido':
                                     page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false&Origin=home')
                                     statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()
                                     if statusPrePedido == 'RECUSADO':
-                                        toaster.show_toast(f'Requisição {reqPendente} foi recusada!',f'O pré-pedido {numPrePedidoTemp} foi recusado, verifique o motivo.',icon_path='iconeME.ico', duration=8, threaded=True)
-                                        aba_ativa[dicioConfig['PEDIDO'] + str(linha)] = statusPrePedido
+                                        toaster.show_toast(f'Requisição {reqPendente} foi recusada!',f'O pré-pedido {numPrePedidoTemp} foi recusado, verifique o motivo.\n Clique para abrir no navegador.',icon_path='iconeME.ico', duration=8, threaded=True, callback_on_click= lambda: webbrowser.open_new(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false&Origin=home'))
+                                        aba_ativa[dicioConfig['PEDIDO'] + str(linha)] = 0
+                                        aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Recusado'
                                     else: 
-                                        toaster.show_toast(f'Requisição {reqPendente} já possui pré-pedido aprovado!',f'O número do pré-pedido é {numPrePedidoTemp}. \nPlanilha atualizada e monitorando!',icon_path='iconeME.ico', duration=8, threaded=True)
+                                        toaster.show_toast(f'Requisição {reqPendente} já possui pré-pedido aprovado!',f'O número do pré-pedido é {numPrePedidoTemp}. \nPlanilha atualizada e monitorando! Clique para abrir no navegador.',icon_path='iconeME.ico', duration=8, threaded=True, callback_on_click= lambda: webbrowser.open_new(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false&Origin=home'))
                                     dataaberturatemp = page.locator('xpath=//*[@id="ctl00_conteudo_gridStatus_pnlGridHistoricoV2"]/table/tbody/tr[2]/td[3]').inner_html().split()[0]
                                     aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = dataaberturatemp
-                                    aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedidoTemp
-                                    sleep(5)
+                                    aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = int(numPrePedidoTemp)
+                                    tabela.save(nomeplanilha)
+                                    
                                     continue
 
                                 elif statusPrePedidoTemp == 'Pedido:':
                                     page.goto(f'https://www.me.com.br/ShowPedido.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false')
                                     numPedidoTemp = page.locator('xpath=/html/body/main/div/div[2]/div[1]/p[1]').inner_html().strip()
                                     dataaberturatemp = page.locator('xpath=//*[@id="MEComponentManager_MECollapse_2"]/div/div/div[4]/div/div/span').inner_html().split()[0]
-                                    aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = numPrePedidoTemp
-                                    aba_ativa[dicioConfig['PEDIDO'] + str(linha)] = numPedidoTemp
+                                    aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = int(numPrePedidoTemp)
+                                    aba_ativa[dicioConfig['PEDIDO'] + str(linha)] = int(numPedidoTemp)
                                     aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = dataaberturatemp
-                                    toaster.show_toast(f'Requisição {reqPendente} já possui pedido aprovado!',f'O número do pedido é {numPedidoTemp}. Planilha atualizada e monitorando!',icon_path='iconeME.ico', duration=8, threaded=True)
-                                    sleep(5)
+                                    aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Concluído'
+                                    toaster.show_toast(f'Requisição {reqPendente} já possui pedido aprovado!',f'O número do pedido é {numPedidoTemp}. \nPlanilha atualizada e monitorando! Clique para abrir no navegador.',icon_path='iconeME.ico', duration=8, threaded=True, callback_on_click= lambda: webbrowser.open_new(f'https://www.me.com.br/ShowPedido.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false'))
+                                    tabela.save(nomeplanilha)
+                                    
                                     continue
 
                             if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)].value != None and aba_ativa[dicioConfig['PEDIDO'] + str(linha)].value == None:
                                 
                                 prePedidoPendente = aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value
                                 
-                                page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
+                                page.goto(f'https://www.me.com.br/ShowPedido.asp?Pedido={prePedidoPendente}&SuperCleanPage=false')
                                 
-                                statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().split(' ')[0].strip()
+                                statusPrePedido = page.locator('.warning').inner_text().strip()
                                 
-                                if statusPrePedido == 'APROVADO':
-                                    numPedidoSAP = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p[1]').inner_html().strip()
-                                    aba_ativa[dicioConfig['PEDIDO']+str(linha)] = numPedidoSAP
+                                if statusPrePedido == 'APROVADO' or statusPrePedido == 'Não Lido':
+                                    numPedidoSAP = page.locator('.badge-code').inner_text().strip()
+                                    aba_ativa[dicioConfig['PEDIDO']+str(linha)] = int(numPedidoSAP)
+                                    aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Concluído'
                                     toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP}',icon_path='iconeME.ico', duration=8, threaded=True)
-                                elif statusPrePedido != 'APROVADO':
+                                elif statusPrePedido.split(' ')[0] != 'APROVADO':
                                     dataPrepedido = int(str(dicioConfig['TEMPO']).split('/')[0])
                                     hoje = int(date.today().strftime('%d/%m/%Y').split('/')[0])
                                     if hoje - dataPrepedido >= 2:
                                         toaster.show_toast(f'Pré-Pedido {prePedidoPendente} pendente há dois dias ou mais!',f'Solicite aprovação do resposável!',icon_path='iconeME.ico', duration=8, threaded=True)
-
+                                
                     try:
                         tabela.save(nomeplanilha)
                     except PermissionError:
@@ -349,15 +366,16 @@ def monitorME():
                 except TimeoutError:
                     toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \nLentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path='iconeME.ico', duration=20, threaded=True)    
                     tabela.save(nomeplanilha)
-                sleep(int(dicioConfig['TEMPO'])*60)
             elif quantPendente == 0:
-               
+                sleep(12)
                 toaster.show_toast(f'Você não possui requisições pendentes!','Monitoramento desativado!',icon_path='iconeME.ico', duration=8, threaded=True)
                 monitorReq.deselect()
             else:
                 continue
         else:
+            sleep(15)
             toaster.show_toast(f'Monitoramento desativado!',f'Você desativou o monitoramento de requisições.',icon_path='iconeME.ico', duration=8, threaded=True)
+            
             break
       
 def limpar():
@@ -395,9 +413,11 @@ def procurarArquivos(janela):
     
 def habilitaProcurar(*args):
     if combo_categoria.get() == "PEDIDO REGULARIZACAO":
-        arquivo_requisicao.place(relx=.33, rely=.5)
-        input_arquivo.place(relx=.02, rely=.54)
-        botaoProcuraArquivo.place(relx=.72, rely=.53)
+        cnpj_requisicao.place(relx=.02, rely=.5)
+        input_cnpj.place(relx=.02, rely=.54)
+        arquivo_requisicao.place(relx=.47, rely=.5)
+        input_arquivo.place(relx=.47, rely=.54)
+        botaoProcuraArquivo.place(relx=.83, rely=.53)
         comentario_requisicao.place(relx=.41, rely=.6)
         input_comentario.place(relx=.15, rely=.64)
         botaoCriar.place(relx=.02, rely=.69)
@@ -407,6 +427,8 @@ def habilitaProcurar(*args):
         
         
     else:
+        cnpj_requisicao.place_forget()
+        input_cnpj.place_forget()
         arquivo_requisicao.place_forget()
         input_arquivo.place_forget()
         botaoProcuraArquivo.place_forget()
@@ -425,6 +447,7 @@ def criarRequisicao(*args):
     tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
     aba_ativa = tabela[dicioConfig['NOMEABA']]
     ultimaLinha = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
+    doc = input_cnpj.get()
     comentario = input_comentario.get()
     caminho_arquivo = list(filenames)
     centro_custo = combo_centroCusto.get()
@@ -451,7 +474,7 @@ def criarRequisicao(*args):
                 progress_bar.place(relx= .10, rely=.79)
             else:
                 progress_bar.place(relx= .10, rely=.72)
-            # valorTotal = str(float(valorun) * int(quant))
+            
             if varcheckNavegador.get():
                 browser = p.chromium.launch(channel="chrome",headless=False)
             else:
@@ -482,8 +505,7 @@ def criarRequisicao(*args):
             page.wait_for_timeout(500)
             frame.locator('xpath=//*[@id="BOrgs_1__BorgDescription"]').press('Tab')
             page.wait_for_timeout(500)
-            if frame.locator('xpath=//*[@id="BOrgs_0__BorgDescription"]').input_value().strip() == "":
-                frame.locator('xpath=//*[@id="BOrgs_0__BorgDescription"]').fill("1 - VERO S.A.")
+            frame.locator('xpath=//*[@id="BOrgs_0__BorgDescription"]').fill("1 - VERO S.A.")
             frame.locator('xpath=//*[@id="BOrgs_1__BorgDescription"]').press('Tab')
             page.wait_for_timeout(500)
             frame.locator('xpath=//*[@id="BOrgs_1__BorgDescription"]').fill(filial)
@@ -583,6 +605,16 @@ def criarRequisicao(*args):
             mensagem_titulo['text'] = (titulo_requisicao)
             mensagem_numero_req['text'] = ('Sua requisição é: ')
             aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)] = date.today().strftime('%d/%m/%Y')
+            aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Pendente'
+            if len(doc) == 11:
+                doc = doc.zfill(11)
+                doc = '{}.{}.{}-{}'.format(doc[:3], doc[3:6], doc[6:9], doc[9:])
+
+            elif len(doc) == 14:
+                doc = doc.zfill(11)
+                doc = '{}.{}.{}/{}-{}'.format(doc[:2], doc[2:5], doc[5:8], doc[8:12], doc[12:])
+            aba_ativa[dicioConfig['CNPJ'] + str(7)] = doc
+            tabela.save(nomeplanilha)
 
     except TimeoutError:
         toaster.show_toast(f'Erro ao criar a requisição.',f'Lentidão no mercado eletronico!\nTente novamente em alguns minutos!',icon_path='iconeME.ico', duration=20, threaded=True)    
@@ -643,11 +675,15 @@ def salvarArquivo(nome_arquivo):
             dicioConfig['DATAPREPEDIDO'] =  entryDataPrePedido.get().upper()
             dicioConfig['PEDIDO'] =  entryPedido.get().upper()
             dicioConfig['STATUS'] =  entryStatus.get().upper()
-            dicioConfig['NOMEABA'] =  entryNomeAba.get().upper()
+            dicioConfig['NOMEABA'] =  entryNomeAba.get()
             dicioConfig['NOMEARQUIVO'] =  entryNomeArquivo.get()
             dicioConfig['TEMPO'] =  entryTempoMonitor.get()
+            tempoMonitor = int(dicioConfig['TEMPO'])
+            nomeplanilha = dicioConfig['NOMEARQUIVO']
+            nomeplanilhaSemext = entryNomeArquivo.get().split('/')[-1].split('.')[-2]
             for k, v in dicioConfig.items():
                 configE.write(k+';'+v+'\n')
+            print(tempoMonitor)
         janelaConfig.destroy()
    
 def addListBox(nome_arquivo):
@@ -841,9 +877,11 @@ def abreArquivo(nome_arquivo):
         botao_remover.place(relx=0.77, rely=0.48)
 
 def threading():
+    tempoMonitor = int(dicioConfig['TEMPO'])
+    toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=9, threaded=True)
+    
     thread = Thread(target=monitorME)
     thread.start()
-    toaster.show_toast(f'Monitoramento ativo!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
             
 def fechar():
     varmonitorReq = False
@@ -919,8 +957,11 @@ combo_filial['values']=(filiais)
 combo_filial.place(relx=.02, rely=.45)
 
 arquivo_requisicao = Label(janela, text='Selecionar arquivos:', font='calibri, 10')
-input_arquivo = Text(janela, width=28, height=1)
-botaoProcuraArquivo = Button(janela, text='Procurar', command=lambda: procurarArquivos('PEDIDOREGULARIZACAO'), width=10, font='calibri, 10')
+input_arquivo = Text(janela, width=14, height=1)
+botaoProcuraArquivo = Button(janela, text='Abrir', command=lambda: procurarArquivos('PEDIDOREGULARIZACAO'), width=5, font='calibri, 10')
+
+cnpj_requisicao = Label(janela, text='Inserir CNPJ:', font='calibri, 10')
+input_cnpj = Entry(janela, width=15)
 
 comentario_requisicao = Label(janela, text='Comentario:', font='calibri, 10')
 comentario_requisicao.place(relx=.41, rely=.5)
