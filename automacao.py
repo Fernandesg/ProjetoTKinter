@@ -25,19 +25,19 @@ s.starttls()
 s.login(usuario_email, senha_email)
 
 dicioLogin = {}
-passwords2 = open('credenciais.txt', 'r')
-for linha in passwords2:
-    (x,y) = linha.split('=')
-    x = x.strip()
-    y= y.strip()
-    dicioLogin[x]=y
+with open('credenciais.txt', 'r') as passwords2 :
+    for linha in passwords2:
+        (x,y) = linha.split('=')
+        x = x.strip()
+        y= y.strip()
+        dicioLogin[x]=y
 dicioLogin['site']
 
-filiais_caminho = open('filiais.txt', 'r', encoding="UTF-8")
-filiais = []
-for linhas in filiais_caminho:
-    linhas = linhas.strip()
-    filiais.append(linhas)
+with open('filiais.txt', 'r', encoding="UTF-8") as filiais_caminho :
+    filiais = []
+    for linhas in filiais_caminho:
+        linhas = linhas.strip()
+        filiais.append(linhas)
 
 listaTipo = []
 dicioTipo = {}
@@ -50,26 +50,26 @@ with open("TipoRequisicao.txt", encoding="ISO-8859-1") as dicionarioTipoReq:
         if chave != '':
             listaTipo.append(chave)
 
-cod_caminho = open('codigos.txt', 'r', encoding="UTF-8")
-codigos = []
-for linhas in cod_caminho:
-    linhas = linhas.strip()
-    if linhas != '':
-        codigos.append(linhas)
+with open('codigos.txt', 'r', encoding="UTF-8") as cod_caminho :
+    codigos = []
+    for linhas in cod_caminho:
+        linhas = linhas.strip()
+        if linhas != '':
+            codigos.append(linhas)
 
-cc_caminho = open('centrocustos.txt', 'r', encoding="UTF-8")
-centroCustos = []
-for linhas in cc_caminho:
-    linhas = linhas.strip()
-    if linhas != '':
-        centroCustos.append(linhas)
+with open('centrocustos.txt', 'r', encoding="UTF-8") as cc_caminho:
+    centroCustos = []
+    for linhas in cc_caminho:
+        linhas = linhas.strip()
+        if linhas != '':
+            centroCustos.append(linhas)
 
-categorias_caminho = open('categorias.txt', 'r', encoding="UTF-8")
-categorias = []
-for linhas in categorias_caminho:
-    linhas = linhas.strip()
-    if linhas != '':
-        categorias.append(linhas)
+with open('categorias.txt', 'r', encoding="UTF-8") as categorias_caminho :
+    categorias = []
+    for linhas in categorias_caminho:
+        linhas = linhas.strip()
+        if linhas != '':
+            categorias.append(linhas)
 
 dicioConfig = {}
 with open('configExcel.txt', 'r', encoding='ISO-8859-1') as configexcel:
@@ -102,9 +102,7 @@ configmenu.add_command(label='Configurar monitor', command=lambda: configMonitor
 
 toaster = ToastNotifier()
 codLista = []
-tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
-aba_ativa = tabela[dicioConfig['NOMEABA']]
-ultimaLinha = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
+
 
 def configMonitor():
     global EntryNF 
@@ -213,6 +211,8 @@ def configMonitor():
     botaoCancelar.place(relx=.75, rely = .8)
 
 def monitorME():
+    tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
+    aba_ativa = tabela[dicioConfig['NOMEABA']]
     sleep(15)
     global varmonitorReq
     while True:
@@ -228,7 +228,7 @@ def monitorME():
             toaster.show_toast(f'Você possui {quantPendente} requisições pendentes!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
             
             if quantPendente > 0:
-                sleep(int(dicioConfig['TEMPO'])*60)
+                
                 try:
                     with sync_playwright() as p:
                         browser = p.chromium.launch(channel="chrome")
@@ -324,7 +324,7 @@ def monitorME():
                             if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)].value != None and aba_ativa[dicioConfig['PEDIDO'] + str(linha)].value == None:
                                 
                                 prePedidoPendente = aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value
-                                print(prePedidoPendente)
+                                
                                 page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
                                 
                                 statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().split(' ')[0].strip()
@@ -349,6 +349,7 @@ def monitorME():
                 except TimeoutError:
                     toaster.show_toast(f'Erro no monitoramento de requisição.',f'Não foi possivel monitorar as requisições. \nLentidão no mercado eletronico, tentando novamente em alguns minutos!',icon_path='iconeME.ico', duration=20, threaded=True)    
                     tabela.save(nomeplanilha)
+                sleep(int(dicioConfig['TEMPO'])*60)
             elif quantPendente == 0:
                
                 toaster.show_toast(f'Você não possui requisições pendentes!','Monitoramento desativado!',icon_path='iconeME.ico', duration=8, threaded=True)
@@ -421,6 +422,9 @@ def atualizaCodigo(*args):
     combo_item.set(';'.join(codLista).strip())
 
 def criarRequisicao(*args):
+    tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
+    aba_ativa = tabela[dicioConfig['NOMEABA']]
+    ultimaLinha = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
     comentario = input_comentario.get()
     caminho_arquivo = list(filenames)
     centro_custo = combo_centroCusto.get()
@@ -692,9 +696,9 @@ def abreArquivo(nome_arquivo):
     labelSenha = Label(janelaArquivos,text='Senha:')
     labelSite = Label(janelaArquivos,text='Site:')
     
-    credencialUser = Entry(janelaArquivos,textvariable=credencialUser, width=20)
-    credencialSenha = Entry(janelaArquivos,textvariable=credencialSenha, width=20)
-    credencialSite = Entry(janelaArquivos,textvariable= credencialSite, width=20)
+    credencialUser = Entry(janelaArquivos, textvariable=credencialUser, width=20)
+    credencialSenha = Entry(janelaArquivos, textvariable=credencialSenha, width=20)
+    credencialSite = Entry(janelaArquivos, textvariable= credencialSite, width=20)
     
     botao_salvar = Button(janelaArquivos, text='Salvar', width=12, command=lambda: salvarArquivo(nome_arquivo))
     botao_cancelar = Button(janelaArquivos, text='Cancelar', width=12, command=janelaArquivos.destroy)
