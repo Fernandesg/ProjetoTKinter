@@ -230,9 +230,7 @@ def monitorME():
             if quantPendente > 0:
                 sleep(20)
                 toaster.show_toast(f'Você possui {quantPendente} requisições pendentes!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
-                print(datetime.now())
                 sleep(int(dicioConfig['TEMPO'])*40)
-                print(datetime.now())
                 try:
                     with sync_playwright() as p:
                         if varcheckNavegador.get():
@@ -264,9 +262,9 @@ def monitorME():
                                 if aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)].value == None:
                                     aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)] = dataprepedidoTemp
                                 try:
-                                    statusGeral = page.locator('.icon-status-item-stagethree+ b').inner_text().strip()  
+                                    statusGeral = page.locator('#formItemContext1 .icon-status-item-stagethree+ b').inner_text().strip()  
                                 except:
-                                    statusGeral = page.locator('#formItemContext1 .green+ b').inner_text().strip()
+                                    statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b').inner_text().strip()
                                 statusPrePedidoTemp = statusGeral.split()[1].strip()
                                 numPrePedidoTemp = statusGeral.split()[-1].strip()
 
@@ -340,9 +338,10 @@ def monitorME():
                             if celula.value == 'Pendente' and aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)].value != None and aba_ativa[dicioConfig['PEDIDO'] + str(linha)].value == None:
                                 
                                 prePedidoPendente = aba_ativa[dicioConfig['NUMPREPEDIDO']+str(linha)].value
-                                
-                                page.goto(f'https://www.me.com.br/ShowPedido.asp?Pedido={prePedidoPendente}&SuperCleanPage=false')
-                                
+                                try:
+                                    page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
+                                except:
+                                    page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
                                 statusPrePedido = page.locator('.warning').inner_text().strip()
                                 
                                 if statusPrePedido == 'APROVADO' or statusPrePedido == 'Não Lido':
@@ -351,7 +350,7 @@ def monitorME():
                                     aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Concluído'
                                     toaster.show_toast(f'Pré-Pedido {prePedidoPendente} aprovado!',f'O número do seu pedido é {numPedidoSAP}',icon_path='iconeME.ico', duration=8, threaded=True)
                                 elif statusPrePedido.split(' ')[0] != 'APROVADO':
-                                    dataPrepedido = int(str(dicioConfig['TEMPO']).split('/')[0])
+                                    dataPrepedido = int(str(aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)].value).split('/')[0])
                                     hoje = int(date.today().strftime('%d/%m/%Y').split('/')[0])
                                     if hoje - dataPrepedido >= 2:
                                         toaster.show_toast(f'Pré-Pedido {prePedidoPendente} pendente há dois dias ou mais!',f'Solicite aprovação do resposável!',icon_path='iconeME.ico', duration=8, threaded=True)
@@ -379,11 +378,13 @@ def monitorME():
             break
       
 def limpar():
+
     input_comentario.delete(0,"end")
     input_data.delete(0,"end")
     input_quantidade.delete(0,"end")
     input_titulo.delete(0,"end")
     input_valorUN.delete(0,"end")
+    input_cnpj.delete(0,"end")
     input_arquivo.delete("1.0","end")
     combo_categoria.set("")
     combo_centroCusto.set("")
@@ -397,6 +398,7 @@ def limpar():
     mensagem_titulo['text'] = ('')
     mensagem_numero_req['text'] = ('')
     titulo_progress_bar['text'] = ('')
+    progress_bar['value'] = 0
     habilitaProcurar()
     
 def procurarArquivos(janela):
@@ -412,7 +414,7 @@ def procurarArquivos(janela):
         input_arquivo.insert(INSERT, filenames[0])
     
 def habilitaProcurar(*args):
-    if combo_categoria.get() == "PEDIDO REGULARIZACAO":
+    if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
         cnpj_requisicao.place(relx=.02, rely=.5)
         input_cnpj.place(relx=.02, rely=.54)
         arquivo_requisicao.place(relx=.47, rely=.5)
@@ -446,7 +448,9 @@ def atualizaCodigo(*args):
 def criarRequisicao(*args):
     tabela = load_workbook(dicioConfig['NOMEARQUIVO'], data_only=True)
     aba_ativa = tabela[dicioConfig['NOMEABA']]
-    ultimaLinha = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
+    ultimaLinhaReq = dicioConfig['REQUISICAO'] + str(len(aba_ativa[dicioConfig['REQUISICAO']])+1)
+    ultimaLinhaPed = dicioConfig['PEDIDO'] + str(len(aba_ativa[dicioConfig['PEDIDO']])+1)
+    progress_bar['value'] = 0
     doc = input_cnpj.get()
     comentario = input_comentario.get()
     caminho_arquivo = list(filenames)
@@ -470,10 +474,15 @@ def criarRequisicao(*args):
     
     try:
         with sync_playwright() as p:
-            if combo_categoria.get() == "PEDIDO REGULARIZACAO":
+
+            if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
+                mensagem_titulo.place(relx= .1, rely=.85)
+                mensagem_numero_req.place(relx= .1, rely=.92)
                 progress_bar.place(relx= .10, rely=.79)
             else:
                 progress_bar.place(relx= .10, rely=.72)
+                mensagem_titulo.place(relx= .1, rely=.77)
+                mensagem_numero_req.place(relx= .1, rely=.82)
             
             if varcheckNavegador.get():
                 browser = p.chromium.launch(channel="chrome",headless=False)
@@ -555,12 +564,14 @@ def criarRequisicao(*args):
                 valorun[i] = valorun[i].replace(',','.')
                 valorTotal = str(float(valorun[i]) * int(quant[i]))
                 page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').fill(valorun[i].replace(".",","))
-                page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').click()
-                page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').press('Enter')
+                page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').press('Tab')
+                
                 page.wait_for_timeout(1000)
                 if cat_Pedido == 'PEDIDO REGULARIZACAO':
                     page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
-                else:
+                    page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').click()
+                    page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').press('Enter')
+                elif cat_Pedido == 'PEDIDO COMPRA PADRAO':
                     page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_1__valor"]').fill(titulo_requisicao)
                     page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
             page.locator('xpath=//*[@id="btnAvancar"]').click()
@@ -572,7 +583,7 @@ def criarRequisicao(*args):
              
             progress_bar['value'] += 14.28
             
-            if cat_Pedido == 'PEDIDO REGULARIZACAO':
+            if cat_Pedido == 'PEDIDO REGULARIZACAO' or cat_Pedido == 'DESPESAS ADMINISTRATIVAS':
                 with page.expect_popup() as popup_info:
                     page.locator('xpath=//*[@id="anexoReq_link"]').click()
                     popup = popup_info.value
@@ -587,25 +598,29 @@ def criarRequisicao(*args):
             page.wait_for_timeout(1000)
             progress_bar['value'] += 14.3
 
-            if cat_Pedido == 'PEDIDO REGULARIZACAO':
-                aba_ativa[ultimaLinha] = requisicao.inner_html().strip()[4:]
+            if cat_Pedido == 'PEDIDO REGULARIZACAO' or cat_Pedido == 'DESPESAS ADMINISTRATIVAS':
+                aba_ativa[ultimaLinhaReq] = int(requisicao.inner_html().strip()[4:])
+                
 
-            if combo_categoria.get() == "PEDIDO REGULARIZACAO":
+            elif cat_Pedido == 'PEDIDO COMPRA PADRAO':
+                aba_ativa[ultimaLinhaPed] = int(requisicao.inner_html().strip()[4:])
+                
+
+            if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
                 caixa_numero_req.place(relx= .60, rely=.925)
-                mensagem_titulo.place(relx= .1, rely=.85)
-                mensagem_numero_req.place(relx= .1, rely=.92)
+                
                 
             else:
                 caixa_numero_req.place(relx= .64, rely=.825)
-                mensagem_titulo.place(relx= .1, rely=.77)
-                mensagem_numero_req.place(relx= .1, rely=.82)
+                
+
 
             titulo_progress_bar['text'] = ('######## REQUISIÇÃO FINALIZADA ########')
             caixa_numero_req.insert(INSERT, requisicao.inner_html().strip()[4:])
             mensagem_titulo['text'] = (titulo_requisicao)
             mensagem_numero_req['text'] = ('Sua requisição é: ')
-            aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)] = date.today().strftime('%d/%m/%Y')
-            aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Pendente'
+            aba_ativa[dicioConfig['DATAABERTURA'] + str(len(aba_ativa[dicioConfig['DATAABERTURA']]))] = date.today().strftime('%d/%m/%Y')
+            aba_ativa[dicioConfig['STATUS'] + str(len(aba_ativa[dicioConfig['STATUS']]))] = 'Pendente'
             if len(doc) == 11:
                 doc = doc.zfill(11)
                 doc = '{}.{}.{}-{}'.format(doc[:3], doc[3:6], doc[6:9], doc[9:])
@@ -613,7 +628,7 @@ def criarRequisicao(*args):
             elif len(doc) == 14:
                 doc = doc.zfill(11)
                 doc = '{}.{}.{}/{}-{}'.format(doc[:2], doc[2:5], doc[5:8], doc[8:12], doc[12:])
-            aba_ativa[dicioConfig['CNPJ'] + str(7)] = doc
+            aba_ativa[dicioConfig['CNPJ'] + str(len(aba_ativa[dicioConfig['CNPJ']]))] = doc
             tabela.save(nomeplanilha)
 
     except TimeoutError:
@@ -683,7 +698,7 @@ def salvarArquivo(nome_arquivo):
             nomeplanilhaSemext = entryNomeArquivo.get().split('/')[-1].split('.')[-2]
             for k, v in dicioConfig.items():
                 configE.write(k+';'+v+'\n')
-            print(tempoMonitor)
+            
         janelaConfig.destroy()
    
 def addListBox(nome_arquivo):
