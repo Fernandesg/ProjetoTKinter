@@ -924,6 +924,8 @@ def fechar():
         janela.quit()
         janela.destroy()
 
+print("teste")
+
 varcheckNavegador = BooleanVar()
 varmonitorReq = BooleanVar()
 
