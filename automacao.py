@@ -80,7 +80,7 @@ with open('configExcel.txt', 'r', encoding='ISO-8859-1') as configexcel:
 
 tempoMonitor = int(dicioConfig['TEMPO'])
 nomeplanilha = dicioConfig['NOMEARQUIVO']
-nomeplanilhaSemext=nomeplanilha.split('/')[-1].split('.')[-2]
+nomeplanilhaSemext= nomeplanilha.split('.')
 
 janela = Tk()
 janela.title('Abertura de requisições')
@@ -230,7 +230,7 @@ def monitorME():
             if quantPendente > 0:
                 sleep(20)
                 toaster.show_toast(f'Você possui {quantPendente} requisições pendentes!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
-                sleep(int(dicioConfig['TEMPO'])*40)
+                # sleep(int(dicioConfig['TEMPO'])*40)
                 try:
                     with sync_playwright() as p:
                         if varcheckNavegador.get():
@@ -257,14 +257,27 @@ def monitorME():
                                 tituloreq = page.locator('//*[@id="formRequest"]/div/div[2]/div[1]/p[1]').inner_html().strip()
                                 statusRequisicao = page.locator('//*[@id="formRequest"]/div/div[2]/div[2]/p[2]/span[2]').inner_html().strip()
                                 filial_requisicao = page.locator('//*[@id="formRequest"]/section[1]/div[1]/div[2]').inner_html().strip()
-                                dataprepedidoTemp = page.locator('//*[@id="txt_Preferences_DataColocacao_Value"]').inner_text().split(' ')[0].strip()
+                                dataprepedidoTemp = page.locator('#txt_Requisitante_DataCriacao').inner_text().split(' ')[0].strip()
+
+                                if statusRequisicao == 'CANCELADO':
+                                    toaster.show_toast(f'Requisição cancelada!',f'Requisição {reqPendente} foi cancelada! \n Continuanado o monitoramento',icon_path='iconeME.ico', duration=10, threaded=True)
+                                    aba_ativa[dicioConfig['STATUS'] + str(linha)] = 'Cancelado'
+                                    continue
 
                                 if aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)].value == None:
                                     aba_ativa[dicioConfig['DATAABERTURA'] + str(linha)] = dataprepedidoTemp
+
+                                if statusRequisicao == "AGUARDANDO ERP":
+                                    continue
+
                                 try:
-                                    statusGeral = page.locator('#formItemContext1 .icon-status-item-stagethree+ b').inner_text().strip()  
+                                    statusGeral = page.locator('xpath=//*[@id="formItemContext1"]/tr[1]/td[4]/div/b').inner_text().strip()  
                                 except:
-                                    statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b').inner_text().strip()
+                                    try:
+                                        statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b').inner_text().strip()
+                                    except:
+                                        statusGeral = page.locator('.green+ b').inner_text().strip()
+                                        
                                 statusPrePedidoTemp = statusGeral.split()[1].strip()
                                 numPrePedidoTemp = statusGeral.split()[-1].strip()
 
@@ -299,12 +312,11 @@ def monitorME():
                                     page.locator('xpath=/html/body/main/form[2]/table[3]/tbody/tr[1]/td/input[1]').click()
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
-                                    page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b[1]/a').click()
-                                    numPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[1]/p').inner_html().strip()
-                                    statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_html().strip()
+                                    numPrePedido = page.locator('xpath=//*[@id="formItemContext1"]/tr[1]/td[4]/div/b[1]/a').inner_text().strip()
+                                    statusPrePedido = page.locator('xpath=//*[@id="formItemContext1"]/tr[1]/td[4]/div/b[1]').inner_html().strip().split(" ")[1]
                                     aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = date.today().strftime('%d/%m/%Y')
                                     aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = int(numPrePedido)
-                                    
+                                    tabela.save(nomeplanilha)
 
                                 elif statusPrePedidoTemp == 'Pré-Pedido':
                                     page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false&Origin=home')
@@ -341,8 +353,8 @@ def monitorME():
                                 try:
                                     page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
                                 except:
-                                    page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false&Origin=home')
-                                statusPrePedido = page.locator('.warning').inner_text().strip()
+                                    page.goto(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={prePedidoPendente}&SuperCleanPage=false')
+                                statusPrePedido = page.locator('xpath=/html/body/main/div/div[1]/div[2]/div[2]/p[1]/span[2]').inner_text().split('-')[0].strip()
                                 
                                 if statusPrePedido == 'APROVADO' or statusPrePedido == 'Não Lido':
                                     numPedidoSAP = page.locator('.badge-code').inner_text().strip()
@@ -463,7 +475,7 @@ def criarRequisicao(*args):
     data_esperada = input_data.get_date().strftime("%d/%m/%Y")
     filial = combo_filial.get()
     nome_filial = filial.split('-',1)[1][1:]
-    
+
     progress_bar.place_forget()
     caixa_numero_req.place_forget()
     caixa_numero_req.delete("1.0", 'end')
@@ -476,12 +488,12 @@ def criarRequisicao(*args):
         with sync_playwright() as p:
 
             if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
-                mensagem_titulo.place(relx= .1, rely=.85)
+                mensagem_titulo.place(relx= .01, rely=.85)
                 mensagem_numero_req.place(relx= .1, rely=.92)
                 progress_bar.place(relx= .10, rely=.79)
             else:
                 progress_bar.place(relx= .10, rely=.72)
-                mensagem_titulo.place(relx= .1, rely=.77)
+                mensagem_titulo.place(relx= .01, rely=.77)
                 mensagem_numero_req.place(relx= .1, rely=.82)
             
             if varcheckNavegador.get():
@@ -518,7 +530,9 @@ def criarRequisicao(*args):
             frame.locator('xpath=//*[@id="BOrgs_1__BorgDescription"]').press('Tab')
             page.wait_for_timeout(500)
             frame.locator('xpath=//*[@id="BOrgs_1__BorgDescription"]').fill(filial)
+            page.wait_for_timeout(500)
             frame.locator('xpath=//*[@id="BOrgs_1__BorgDescription"]').press('Tab')
+            page.wait_for_timeout(500)
             frame.locator('xpath=//*[@id="btnSave"]').click()
 
             # SELECIONA ITENS E QUANTIDADES
@@ -562,15 +576,16 @@ def criarRequisicao(*args):
 
             for i in range(len(quant)):
                 valorun[i] = valorun[i].replace(',','.')
-                valorTotal = str(float(valorun[i]) * int(quant[i]))
+                valorTotal = float(valorun[i]) * int(quant[i])
+                valorTotal = str( "%.2f" % round(valorTotal,2))
                 page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').fill(valorun[i].replace(".",","))
                 page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').press('Tab')
                 
                 page.wait_for_timeout(1000)
                 if cat_Pedido == 'PEDIDO REGULARIZACAO':
-                    page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
                     page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').click()
                     page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').press('Enter')
+                    page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
                 elif cat_Pedido == 'PEDIDO COMPRA PADRAO':
                     page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_1__valor"]').fill(titulo_requisicao)
                     page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
@@ -995,9 +1010,9 @@ titulo_progress_bar.place(relx= .1, rely=.68)
 progress_bar = Progressbar(janela, orient= 'horizontal', mode='determinate', length=280)
 
 
-mensagem_titulo = Label(janela, text="", font='calibri, 11')
-mensagem_titulo.place(relx= .15, rely=.77)
-mensagem_numero_req = Label(janela, text="", font='calibri, 11')
+mensagem_titulo = Label(janela, text="", font='calibri, 10')
+mensagem_titulo.place(relx= .02, rely=.77)
+mensagem_numero_req = Label(janela, text="", font='calibri, 10')
 mensagem_numero_req.place(relx= .15, rely=.84)
 caixa_numero_req = Text(janela, font='calibri, 10', width=15, height= 1)
 
