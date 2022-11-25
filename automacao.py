@@ -230,7 +230,7 @@ def monitorME():
             if quantPendente > 0:
                 sleep(20)
                 toaster.show_toast(f'Você possui {quantPendente} requisições pendentes!',f'O sistema irá monitorar as requisições a cada {tempoMonitor} minuto (s).',icon_path='iconeME.ico', duration=10, threaded=True)
-                # sleep(int(dicioConfig['TEMPO'])*40)
+                sleep(int(dicioConfig['TEMPO'])*40)
                 try:
                     with sync_playwright() as p:
                         if varcheckNavegador.get():
