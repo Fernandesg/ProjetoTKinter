@@ -276,7 +276,10 @@ def monitorME():
                                     try:
                                         statusGeral = page.locator('xpath=//*[@id="formItemStatusHistory"]/div/b').inner_text().strip()
                                     except:
-                                        statusGeral = page.locator('.green+ b').inner_text().strip()
+                                        try:
+                                            statusGeral = page.locator('//*[@id="formItemContext1"]/tr[1]/td[4]/div/b[1]').inner_text().strip()
+                                        except:
+                                            statusGeral = page.locator('.green+ b').inner_text().strip()
                                         
                                 statusPrePedidoTemp = statusGeral.split()[1].strip()
                                 numPrePedidoTemp = statusGeral.split()[-1].strip()
@@ -287,11 +290,14 @@ def monitorME():
                                     page.locator('xpath=//*[@id="btnEmergency"]').click()
                                     page.locator('xpath=/html/body/div[1]/div[3]/div/button[1]/span').click()
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
-                                    page.locator('xpath=//*[@id="CGC"]').fill(cnpj)
+                                    page.locator('xpath=//*[@id="__BVID__53"]').fill(cnpj)
+                                    sleep(1)
                                     page.keyboard.press('Enter')
-                                    page.locator('xpath=//*[@id="grid"]/div[2]/table/tbody/tr/td[1]/div/input').click()
-                                    page.locator('xpath=//*[@id="btnSalvarSelecao"]').click()
-                                    page.locator('xpath=//*[@id="btnVoltarPrePedEmergencial"]').click()
+                                    page.locator('xpath=//*[@id="__BVID__127__row_4163013"]/td[1]/div/div').click()
+                                    page.locator('xpath=//*[@id="__BVID__32__BV_toggle_"]').click()
+                                    page.wait_for_timeout(1)
+                                    page.locator('xpath=//*[@id="__BVID__32"]/ul/li[1]/a/span').click()
+                                    page.locator('xpath=//*[@id="__layout"]/div/main/div/div/div[2]/div[1]/div[3]/nav/button/span').click()
                                     page.locator('xpath=//*[@id="Resumo"]').fill(tituloreq)
                                     dataesperada = page.locator('xpath=/html/body/main/form[2]/table[1]/tbody/tr[5]/td').inner_html()
                                     
@@ -923,8 +929,6 @@ def fechar():
     except:
         janela.quit()
         janela.destroy()
-
-print("teste")
 
 varcheckNavegador = BooleanVar()
 varmonitorReq = BooleanVar()
