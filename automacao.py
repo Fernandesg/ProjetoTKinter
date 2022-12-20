@@ -287,17 +287,25 @@ def monitorME():
                                 if statusRequisicao == 'APROVADO' and statusGeral == 'Em Pendência de Compra':
                                 #CRIAR PRE-PEDIDO
                                     toaster.show_toast(f'Requisição aprovada!',f'Requisição {reqPendente} aprovada! \n Criando pré-pedido',icon_path='iconeME.ico', duration=10, threaded=True)
+                                    quantidade_itens = page.locator('#formRequest > section.me-request-items.me-collapse.opened > h1 > span.clickable').inner_text().strip()
+                                    quantidade_itens = quantidade_itens[-2]
+                                 
                                     page.locator('xpath=//*[@id="btnEmergency"]').click()
                                     page.locator('xpath=/html/body/div[1]/div[3]/div/button[1]/span').click()
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
-                                    page.locator('xpath=//*[@id="__BVID__53"]').fill(cnpj)
-                                    sleep(1)
+                                    sleep(5)
+                                    page.locator('[placeholder="Buscar por Nome, CNPJ, Nome Fantasia..."]').fill(cnpj)
+
+                                    sleep(5)
                                     page.keyboard.press('Enter')
-                                    page.locator('xpath=//*[@id="__BVID__127__row_4163013"]/td[1]/div/div').click()
-                                    page.locator('xpath=//*[@id="__BVID__32__BV_toggle_"]').click()
-                                    page.wait_for_timeout(1)
-                                    page.locator('xpath=//*[@id="__BVID__32"]/ul/li[1]/a/span').click()
-                                    page.locator('xpath=//*[@id="__layout"]/div/main/div/div/div[2]/div[1]/div[3]/nav/button/span').click()
+                                    sleep(5)
+                                    page.locator('.check-box-column .custom-checkbox').click()
+                                    sleep(5)
+                                    
+                                    page.locator("button", has_text="Mais ações").click()
+                                    sleep(5)
+                                    page.locator("text=Salvar Seleção").click()
+                                    page.locator("button", has_text="Voltar para pedido").click()
                                     page.locator('xpath=//*[@id="Resumo"]').fill(tituloreq)
                                     dataesperada = page.locator('xpath=/html/body/main/form[2]/table[1]/tbody/tr[5]/td').inner_html()
                                     
@@ -315,13 +323,21 @@ def monitorME():
 
                                     page.locator('//select[@name="LocalCobranca"]').select_option(index=indice-1)
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_3"]').click()
-                                    page.locator('xpath=/html/body/main/form[2]/table[3]/tbody/tr[1]/td/input[1]').click()
+                                    sleep(2)
+                                    for i in range(int(quantidade_itens)):
+                                        i = i + 1
+                                       
+                                        itemcheck = page.locator(f'[name=Ativo{i}]').is_checked()
+                                        if itemcheck == False:
+                                            page.locator(f'[name=Ativo{i}]').check()
+                                           
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
                                     page.locator('xpath=//*[@id="MEComponentManager_MEButton_2"]').click()
                                     numPrePedido = page.locator('xpath=//*[@id="formItemContext1"]/tr[1]/td[4]/div/b[1]/a').inner_text().strip()
                                     statusPrePedido = page.locator('xpath=//*[@id="formItemContext1"]/tr[1]/td[4]/div/b[1]').inner_html().strip().split(" ")[1]
                                     aba_ativa[dicioConfig['DATAPREPEDIDO'] + str(linha)] = date.today().strftime('%d/%m/%Y')
                                     aba_ativa[dicioConfig['NUMPREPEDIDO'] + str(linha)] = int(numPrePedido)
+                                    toaster.show_toast(f'Pré-pedido criado!!',f'O número do pré-pedido é {numPrePedido}',icon_path='iconeME.ico', duration=8, threaded=True, callback_on_click= lambda: webbrowser.open_new(f'https://www.me.com.br/VerPrePedidoWF.asp?Pedido={numPrePedidoTemp}&SuperCleanPage=false&Origin=home'))
                                     tabela.save(nomeplanilha)
 
                                 elif statusPrePedidoTemp == 'Pré-Pedido':
@@ -432,7 +448,7 @@ def procurarArquivos(janela):
         input_arquivo.insert(INSERT, filenames[0])
     
 def habilitaProcurar(*args):
-    if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
+    if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS' or combo_categoria.get() == 'COLABORADORES - REEMBOLSOS':
         cnpj_requisicao.place(relx=.02, rely=.5)
         input_cnpj.place(relx=.02, rely=.54)
         arquivo_requisicao.place(relx=.47, rely=.5)
@@ -481,6 +497,8 @@ def criarRequisicao(*args):
     data_esperada = input_data.get_date().strftime("%d/%m/%Y")
     filial = combo_filial.get()
     nome_filial = filial.split('-',1)[1][1:]
+    if filial == '73 - G4 TELECOMUNCACOES COMERCIO E SERVICOS DE INFORMATICA EIRELI CNPJ 37.091.452/0001-36':
+        nome_filial = 'G4 TELECOMUNCACOES COMERCIO E SERVICOS DE INFORMATICA EIRELIG4 TELECOMUNCACOES COMERCIO E SERVICOS D - Rua Venancio Carrilho,, 283  - OLIVEIRA - MG'
 
     progress_bar.place_forget()
     caixa_numero_req.place_forget()
@@ -493,7 +511,7 @@ def criarRequisicao(*args):
     try:
         with sync_playwright() as p:
 
-            if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
+            if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS' or combo_categoria.get() == 'COLABORADORES - REEMBOLSOS':
                 mensagem_titulo.place(relx= .01, rely=.85)
                 mensagem_numero_req.place(relx= .1, rely=.92)
                 progress_bar.place(relx= .10, rely=.79)
@@ -604,7 +622,7 @@ def criarRequisicao(*args):
              
             progress_bar['value'] += 14.28
             
-            if cat_Pedido == 'PEDIDO REGULARIZACAO' or cat_Pedido == 'DESPESAS ADMINISTRATIVAS':
+            if cat_Pedido == 'PEDIDO REGULARIZACAO' or cat_Pedido == 'DESPESAS ADMINISTRATIVAS' or cat_Pedido == 'COLABORADORES - REEMBOLSOS':
                 with page.expect_popup() as popup_info:
                     page.locator('xpath=//*[@id="anexoReq_link"]').click()
                     popup = popup_info.value
@@ -619,7 +637,7 @@ def criarRequisicao(*args):
             page.wait_for_timeout(1000)
             progress_bar['value'] += 14.3
 
-            if cat_Pedido == 'PEDIDO REGULARIZACAO' or cat_Pedido == 'DESPESAS ADMINISTRATIVAS':
+            if cat_Pedido == 'PEDIDO REGULARIZACAO' or cat_Pedido == 'DESPESAS ADMINISTRATIVAS' or cat_Pedido == 'COLABORADORES - REEMBOLSOS':
                 aba_ativa[ultimaLinhaReq] = int(requisicao.inner_html().strip()[4:])
                 
 
@@ -627,7 +645,7 @@ def criarRequisicao(*args):
                 aba_ativa[ultimaLinhaPed] = int(requisicao.inner_html().strip()[4:])
                 
 
-            if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
+            if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS' or cat_Pedido == 'COLABORADORES - REEMBOLSOS':
                 caixa_numero_req.place(relx= .60, rely=.925)
                 
                 
