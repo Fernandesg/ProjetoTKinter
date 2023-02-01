@@ -487,7 +487,8 @@ def criarRequisicao(*args):
     progress_bar['value'] = 0
     doc = input_cnpj.get()
     comentario = input_comentario.get()
-    caminho_arquivo = list(filenames)
+    if combo_categoria.get() == "PEDIDO REGULARIZACAO" or combo_categoria.get() == 'DESPESAS ADMINISTRATIVAS':
+        caminho_arquivo = list(filenames)
     centro_custo = combo_centroCusto.get()
     cat_Pedido = combo_categoria.get()
     titulo_requisicao = input_titulo.get()
@@ -563,17 +564,22 @@ def criarRequisicao(*args):
             titulo_progress_bar['text'] = ('Adicionando itens e quantidades')      
             progress_bar['value'] += 14.28
             for i in range(len(quant)):
+                page.wait_for_selector('xpath=//*[@id="Valor"]')
                 page.wait_for_timeout(1000)
                 page.locator('xpath=//*[@id="Valor"]').fill(item[i])
+                page.wait_for_selector('xpath=//*[@id="btnSearchSimple"]')
+                page.wait_for_timeout(1000)
                 page.locator('xpath=//*[@id="btnSearchSimple"]').click()
+                page.wait_for_selector('.icon-shopping-cart')
+                page.wait_for_timeout(1000)
                 page.locator('.icon-shopping-cart').click()
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(2000)
                 page.keyboard.press('Control+A')
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(2000)
                 page.keyboard.type(quant[i])
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(2000)
                 page.keyboard.press('Tab')
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(2000)
             page.locator('xpath=//*[@id="btnAvancar"]').click()
 
             # TELA CONDIÇÕES GERAIS
@@ -604,8 +610,11 @@ def criarRequisicao(*args):
                 valorTotal = str( "%.2f" % round(valorTotal,2))
                 page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').fill(valorun[i].replace(".",","))
                 page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').press('Tab')
-                
+                page.locator(f'xpath=//*[@id="select2-Itens_{0}__CategoriaContabil_Value-container"]').click()
+                page.locator(f'.select2-search__field').fill('CENTRO DE CUSTO')
+                page.keyboard.press('Enter')
                 page.wait_for_timeout(1000)
+                
                 if cat_Pedido == 'PEDIDO REGULARIZACAO':
                     page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').click()
                     page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').press('Enter')
