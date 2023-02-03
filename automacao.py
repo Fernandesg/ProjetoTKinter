@@ -565,21 +565,21 @@ def criarRequisicao(*args):
             progress_bar['value'] += 14.28
             for i in range(len(quant)):
                 page.wait_for_selector('xpath=//*[@id="Valor"]')
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(500)
                 page.locator('xpath=//*[@id="Valor"]').fill(item[i])
                 page.wait_for_selector('xpath=//*[@id="btnSearchSimple"]')
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(500)
                 page.locator('xpath=//*[@id="btnSearchSimple"]').click()
                 page.wait_for_selector('.icon-shopping-cart')
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(500)
                 page.locator('.icon-shopping-cart').click()
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(1000)
                 page.keyboard.press('Control+A')
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(1000)
                 page.keyboard.type(quant[i])
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(1000)
                 page.keyboard.press('Tab')
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(1000)
             page.locator('xpath=//*[@id="btnAvancar"]').click()
 
             # TELA CONDIÇÕES GERAIS
@@ -605,13 +605,14 @@ def criarRequisicao(*args):
             progress_bar['value'] += 14.28
 
             for i in range(len(quant)):
+                print(i)
                 valorun[i] = valorun[i].replace(',','.')
                 valorTotal = float(valorun[i]) * int(quant[i])
                 valorTotal = str( "%.2f" % round(valorTotal,2))
-                page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').fill(valorun[i].replace(".",","))
-                page.locator(f'xpath=//*[@id="Itens_{i}__PrecoEstimado_Value"]').press('Tab')
-                page.locator(f'xpath=//*[@id="select2-Itens_{0}__CategoriaContabil_Value-container"]').click()
-                page.locator(f'.select2-search__field').fill('CENTRO DE CUSTO')
+                page.locator(f'#Itens_{i}__PrecoEstimado_Value').fill(valorun[i].replace(".",","))
+                page.keyboard.press('Tab')
+                page.locator(f'#select2-Itens_{i}__CategoriaContabil_Value-container').click()
+                page.keyboard.type('CENTRO DE CUSTO')
                 page.keyboard.press('Enter')
                 page.wait_for_timeout(1000)
                 
@@ -620,8 +621,8 @@ def criarRequisicao(*args):
                     page.locator(f'xpath=//*[@id="select2-Itens_{i}__CategoriaContabil_Value-container"]').press('Enter')
                     page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
                 elif cat_Pedido == 'PEDIDO COMPRA PADRAO':
-                    page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_1__valor"]').fill(titulo_requisicao)
-                    page.locator(f'xpath=//*[@id="Itens_{i}__Attributes_0__valor"]').fill(valorTotal.replace(".",","))
+                    page.locator(f'#Itens_{i}__Attributes_1__valor').fill(titulo_requisicao)
+                    page.locator(f'#Itens_{i}__Attributes_0__valor').fill(valorTotal.replace(".",","))
             page.locator('xpath=//*[@id="btnAvancar"]').click()
             page.wait_for_timeout(1000)
 
